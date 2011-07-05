@@ -63,6 +63,8 @@ class Room {
     }
 
     method enter {
+        say $.name;
+
         unless $!visited {
             self.look;
         }
