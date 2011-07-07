@@ -47,7 +47,6 @@ sub opposite_direction(Direction $d) {
 
 role Thing {
     has Str $!name;
-    has Bool $!hidden;
 
     method there_is {
         "There is a $!name here.";
@@ -55,12 +54,12 @@ role Thing {
 }
 
 role Showable {
-    has Bool $.is_visible;
+    has Bool $.is_visible = False;
 
     method show {
         unless $!is_visible {
             $!is_visible = True;
-            self.on_show;
+            self.?on_show;
         }
     }
 }
@@ -104,7 +103,7 @@ class Door does Thing does Showable does Openable {
     }
 
     method on_show {
-        say "There's a door here, under the thick grass!";
+        say "You discover a door in the hill, under the thick grass!";
     }
 
     method on_open {
@@ -117,11 +116,24 @@ class Door does Thing does Showable does Openable {
     }
 }
 
-my $car = Car.new(:name("car"));
-my $door = Door.new(:name("door"), :is_visible(False));
+class Leaves does Thing does Showable {
+    method there_is {
+        "There are numerous leaves on the trees.";
+    }
+}
 
-class Room {
-    has Str $!name;
+class Brook does Thing {
+    method there_is {
+        "A small brook is running through the forest.";
+    }
+}
+
+my $car = Car.new(:name("car"));
+my $door = Door.new(:name("door"));
+my $leaves = Leaves.new(:name("leaves"));
+my $brook = Brook.new(:name("brook"));
+
+class Room does Thing {
     has Direction %.exits is rw;
     has Direction $.in;
     has Direction $.out;
@@ -174,7 +186,7 @@ class Room {
 }
 
 my $clearing = Room.new( :name<Clearing>, :contents($car) );
-$hill = Room.new( :name<Hill>, :contents($door), :in<south> );
+$hill = Room.new( :name<Hill>, :contents($door, $leaves, $brook), :in<south> );
 $chamber = Room.new( :name(<Chamber>), :out<north> );
 my $hall = Room.new( :name(<Hall>) );
 my $cave = Room.new( :name(<Cave>) );
@@ -241,8 +253,22 @@ loop {
             $room.look;
         }
 
+        when 'examine trees'|'examine the trees' {
+            if $room === $hill {
+                $leaves.show;
+            }
+            else {
+                say "You see no trees here.";
+            }
+        }
+
         when 'examine hill'|'examine the hill' {
-            $door.show;
+            if $room === $hill {
+                $door.show;
+            }
+            else {
+                say "You see no hill here.";
+            }
         }
 
         when 'open door'|'open the door' {
