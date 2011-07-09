@@ -46,10 +46,16 @@ sub opposite_direction(Direction $d) {
 }
 
 role Thing {
-    has Str $!name;
+    has Str $.name;
+    has Str $!description = "[Description of $!name]";
 
     method there_is {
         "There is a $!name here.";
+    }
+
+    method examine {
+        say $!description;
+        self.?on_examine;
     }
 }
 
@@ -94,9 +100,6 @@ role Openable {
     }
 }
 
-my $hill;
-my $chamber;
-
 class Door does Thing does Showable does Openable {
     method on_examine {
         self.show;
@@ -108,11 +111,11 @@ class Door does Thing does Showable does Openable {
 
     method on_open {
         say "You can see into the hill now!";
-        $hill.connect(     'south',     $chamber  );
+        %rooms<hill>.connect('south', %rooms<chamber>);
     }
 
     method on_close {
-        $hill.disconnect('south');
+        %rooms<hill>.disconnect('south');
     }
 }
 
@@ -128,12 +131,7 @@ class Brook does Thing {
     }
 }
 
-my $car = Car.new(:name("car"));
-my $door = Door.new(:name("door"));
-my $leaves = Leaves.new(:name("leaves"));
-my $brook = Brook.new(:name("brook"));
-
-class Room does Thing {
+role Room does Thing {
     has Direction %.exits is rw;
     has Direction $.in;
     has Direction $.out;
@@ -154,21 +152,24 @@ class Room does Thing {
 
     method look {
         say "[Description of room $!name]";
-        for @.contents -> $thing {
+        say "";
+        for %things{@.contents} -> $thing {
             if $thing !~~ Showable || $thing.is_visible {
                 say $thing.there_is;
             }
         }
         given %.exits {
+            when 0 {
+                say "There are no obvious exits from here.";
+            }
             when 1 {
-                say "There is an exit to the {.keys}.";
+                say "You can go {.keys}.";
             }
             when 2 {
-                say "There are exits to the {.keys.join(" and the ")}.";
+                say "You can go {.keys.join(" and ")}.";
             }
-            when 3 {
-                say "There are exits to the ", .keys[0..*-2].join(", "),
-                    "and the {.keys[*-1]}.";
+            default {
+                say "You can go {.keys[0..*-2].join(", ")} and {.keys[*-1]}.";
             }
         }
     }
@@ -185,14 +186,31 @@ class Room does Thing {
     }
 }
 
-my $clearing = Room.new( :name<Clearing>, :contents($car) );
-$hill = Room.new( :name<Hill>, :contents($door, $leaves, $brook), :in<south> );
-$chamber = Room.new( :name(<Chamber>), :out<north> );
-my $hall = Room.new( :name(<Hall>) );
-my $cave = Room.new( :name(<Cave>) );
-my $crypt = Room.new( :name(<Crypt>) );
+class Hill does Room {
+    method on_examine {
+        %things<door>.show;
+    }
+}
 
-$clearing.connect( 'east',      $hill     );
+my %things =
+    car    => Car.new(:name("car")),
+    door   => Door.new(:name("door")),
+    leaves => Leaves.new(:name("leaves")),
+    brook  => Brook.new(:name("brook")),
+;
+
+my %rooms =
+    clearing => Room.new( :name<Clearing>, :contents<car> ),
+    hill     => Hill.new( :name<Hill>, :contents<door leaves brook>,
+                          :in<south> ),
+    chamber  => Room.new( :name(<Chamber>), :out<north> ),
+    hall     => Room.new( :name(<Hall>) ),
+    cave     => Room.new( :name(<Cave>) ),
+    crypt    => Room.new( :name(<Crypt>) ),
+;
+%things.push(%rooms);
+
+%rooms<clearing>.connect('east', %rooms<hill>);
 
 # The following lines will be dynamically applied by solved puzzles.
 #
@@ -200,8 +218,8 @@ $clearing.connect( 'east',      $hill     );
 # $hall.connect(     'down',      $cave     );
 # $cave.connect(     'northwest', $crypt    );
 
-$clearing.enter;
-my $room = $clearing;
+%rooms<clearing>.enter;
+my $room = %rooms<clearing>;
 loop {
     say "";
     my $command = prompt "> ";
@@ -253,39 +271,26 @@ loop {
             $room.look;
         }
 
-        when 'examine trees'|'examine the trees' {
-            if $room === $hill {
-                $leaves.show;
+        when /^ $<verb>=[\w+] <.ws> [the]? <.ws> $<noun>=[\w+] $/ {
+            unless $<verb> eq any <examine open close> {
+                say "Sorry, I don't understand the verb '$<verb>'.";
+                succeed;
             }
-            else {
-                say "You see no trees here.";
+            my $thing = %things{$<noun>};
+            my $is_present
+                = $<noun>.lc eq any($room.name.lc, $room.contents.list);
+            my $is_visible = $thing !~~ Showable || $thing.is_visible;
+            unless $is_present && $is_visible {
+                say "You see no $<noun> here.";
+                succeed;
             }
-        }
-
-        when 'examine hill'|'examine the hill' {
-            if $room === $hill {
-                $door.show;
+            my $found_method;
+            try {
+                $thing."$<verb>"();
+                $found_method = True;
             }
-            else {
-                say "You see no hill here.";
-            }
-        }
-
-        when 'open door'|'open the door' {
-            if $room === $hill && $door.is_visible {
-                $door.open;
-            }
-            else {
-                say "You see no door here.";
-            }
-        }
-
-        when 'close door'|'close the door' {
-            if $room === $hill && $door.is_visible {
-                $door.close;
-            }
-            else {
-                say "You see no door here.";
+            unless $found_method {
+                say "You can't $<verb> the $<noun>.";
             }
         }
 
