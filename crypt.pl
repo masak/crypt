@@ -211,8 +211,27 @@ class Chamber does Room {
     }
 }
 
+sub room_contains(Thing $thing) {
+    return $thing.name.lc eq any $room.name.lc, $room.contents.map({$_}),
+                                   map { .contents.map({$_}) },
+                                   grep Container, %things{$room.contents};
+}
+
+sub player_can_see(Thing $thing) {
+    my $thing_is_visible = $thing !~~ Showable || $thing.is_visible;
+
+    return room_contains($thing) && $thing_is_visible;
+}
+
+sub player_can_see_inside(Thing $thing) {
+    my $thing_is_open = $thing ~~ Container
+                        && ($thing !~~ Openable || $thing.is_open);
+
+    return player_can_see($thing) && $thing_is_open;
+}
+
 my %things =
-    car        => Car.new(:name<car>, :contents<flashlight rope>),
+    car        => Car.new(:name<car>, :contents("flashlight", "rope")),
     flashlight => Thing.new(:name<flashlight>),
     rope       => Thing.new(:name<rope>),
     door       => Door.new(:name<door>),
@@ -244,31 +263,14 @@ my %rooms =
 
 %rooms<clearing>.enter;
 
-sub room_contains(Thing $thing) {
-    return $thing.name.lc eq any($room.name.lc, $room.contents.list);
-}
-
-sub player_can_see(Thing $thing) {
-    my $thing_is_visible = $thing !~~ Showable || $thing.is_visible;
-
-    return room_contains($thing) && $thing_is_visible;
-}
-
-sub player_can_see_inside(Thing $thing) {
-    my $thing_is_open = $thing ~~ Container
-                        && ($thing !~~ Openable || $thing.is_open);
-
-    return player_can_see($thing) && $thing_is_open;
-}
-
 loop {
     say "";
     my $command = prompt "> ";
 
     given $command {
-        when !.defined || *.lc eq "q" | "quit" {
+        when !.defined || .lc eq "q" | "quit" {
             say "";
-            if "y"|"yes" eq prompt "Really quit (Y/N)? " {
+            if "y"|"yes" eq lc prompt "Really quit (y/N)? " {
                 say "Thanks for playing.";
                 exit;
             }
