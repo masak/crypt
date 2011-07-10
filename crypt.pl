@@ -92,8 +92,18 @@ role Openable {
     }
 }
 
+sub exclude(@l, $e) { grep { $_ !=== $e }, @l }
+
 role Container {
     has Thing @.contents is rw;
+
+    method add(Str $name) {
+        @.contents.push($name);
+    }
+
+    method remove(Str $name) {
+        @.contents = exclude(@.contents, $name);
+    }
 
     method list_contents($herephrase, $indent = 0) {
         for %things{@.contents} -> Thing $thing {
@@ -220,30 +230,28 @@ class Chamber does Room {
 
 my $inventory = Inventory.new;
 
-sub exclude(@l, $e) { grep { $_ !=== $e }, @l }
-
 role Takable {
+    method put_in(Container $container) {
+        current_container_of($.name).remove($.name);
+        $container.add($.name);
+    }
+
     method take {
         if inventory_contains($.name) {
-            say "You already have the $.name";
+            say "You are already holding the $.name";
             return;
         }
         say "You take the $.name.";
-        push $inventory.contents, $.name;
-        for $room, %things{$room.contents} -> $thing {
-            next unless $thing ~~ Container;
-            $thing.contents = exclude($thing.contents, $.name);
-        }
+        self.put_in($inventory);
     }
 
     method drop {
         unless inventory_contains($.name) {
-            say "You don't have the $.name";
+            say "You are not holding the $.name";
             return;
         }
         say "You drop the $.name on the ground.";
-        push $room.contents, $.name;
-        $inventory.contents = exclude($inventory.contents, $.name);
+        self.put_in($room);
     }
 }
 
@@ -259,11 +267,22 @@ class Flashlight does Thing does Takable {
 class Rope does Thing does Takable {
 }
 
+sub current_container_of(Str $name) {
+    return $room      if $name eq $room.name.lc;
+    return $room      if $name eq any $room.contents;
+    return $inventory if $name eq any $inventory.contents;
+    for %things{$room.contents} -> $thing {
+        return $thing if $name eq any $thing.?contents;
+    }
+    die "Couldn't find the current container of $name";
+}
+
 sub room_contains(Str $name) {
     return True if $name eq $room.name.lc;
-    return True if $name eq any($room.contents);
+    return True if $name eq any $room.contents;
     return True if $name eq any map { .contents.flat },
-                                grep Container, %things{$room.contents};
+                                grep { player_can_see_inside($_) },
+                                %things{$room.contents};
     return False;
 }
 
@@ -276,8 +295,8 @@ sub player_can_see(Thing $thing) {
     my $thing_is_visible = $thing !~~ Showable || $thing.is_visible;
 
     return False unless $thing_is_visible;
-    return False unless room_contains($thing.name)
-                        || inventory_contains($thing.name);
+    return False unless room_contains($thing.name.lc)
+                        || inventory_contains($thing.name.lc);
 
     return True;
 }
