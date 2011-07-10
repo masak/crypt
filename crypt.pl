@@ -49,7 +49,7 @@ role Thing {
     has Str $.name;
     has Str $!description = "[Description of $!name]";
     has Str $.herephrase;
-    has Str $.carryphrase;
+    has Str $.containphrase;
 
     method examine {
         say $!description;
@@ -105,16 +105,24 @@ role Container {
         @.contents = exclude(@.contents, $name);
     }
 
-    method list_contents($herephrase, $indent = 0) {
+    method list_contents($herephrase) {
         for %things{@.contents} -> Thing $thing {
             if player_can_see($thing) {
-                say '  ' x $indent,
-                    sprintf $thing.herephrase // $herephrase, $thing.name;
-                if player_can_see_inside($thing) {
-                    $thing.list_contents("A %s is in the $thing.name().",
-                                         $indent + 1);
+                say sprintf $thing.herephrase // $herephrase, $thing.name;
+                if player_can_see_inside($thing) && $thing.contents {
+                    say "The $thing.name() contains:";
+                    $thing.list_container_contents(
+                        "A %s."
+                    );
                 }
             }
+        }
+    }
+
+    method list_container_contents($containphrase, $indent = 1) {
+        for %things{@.contents} -> Thing $thing {
+            say '  ' x $indent,
+                sprintf $thing.containphrase // $containphrase, $thing.name;
         }
     }
 
@@ -124,12 +132,6 @@ role Container {
 }
 
 class Inventory does Thing does Container {
-    method list_contents($carryphrase, $indent = 1) {
-        for %things{@.contents} -> Thing $thing {
-            say '  ' x $indent,
-                sprintf $thing.carryphrase // $carryphrase, $thing.name;
-        }
-    }
 }
 
 class Car does Thing does Openable does Container {
@@ -155,9 +157,6 @@ class Door does Thing does Showable does Openable {
 }
 
 class Brook does Thing {
-    method there_is {
-        "A small brook is running through the forest.";
-    }
 }
 
 class Basket does Thing does Container {
@@ -234,6 +233,7 @@ role Takable {
     method put_in(Container $container) {
         current_container_of($.name).remove($.name);
         $container.add($.name);
+        self.?on_put_in($container);
     }
 
     method take {
@@ -256,8 +256,15 @@ role Takable {
 }
 
 class Leaves does Thing does Showable does Takable {
-    method there_is {
-        "There are numerous leaves on the trees.";
+    method on_put_in(Container $_) {
+        when Car {
+            say "Great. Now your car is full of leaves.";
+        }
+        when Basket {
+            say "The ground rumbles and shakes a bit.";
+            say "A passageway opens up to the south, into the caverns.";
+            %rooms<chamber>.connect('south', %rooms<hall>);
+        }
     }
 }
 
@@ -318,9 +325,10 @@ my %things =
     rope       => Rope.new(:name<rope>),
     door       => Door.new(:name<door>),
     leaves     => Leaves.new(:name<leaves>,
-                    :herephrase("Numerous %s are hanging off the trees."),
-                    :carryphrase("69,105 %s.")),
-    brook      => Brook.new(:name<brook>),
+                    :herephrase("Numerous leaves are adorning the trees."),
+                    :containphrase("69,105 %s.")),
+    brook      => Brook.new(:name<brook>,
+                    :herephrase("A small brook runs through the forest.")),
     sign       => Thing.new(:name<sign>),
     basket     => Basket.new(:name<basket>),
 ;
@@ -345,7 +353,6 @@ my %synonyms =
 
 # The following lines will be dynamically applied by solved puzzles.
 #
-# $chamber.connect(  'south',     $hall     );
 # $hall.connect(     'down',      $cave     );
 # $cave.connect(     'northwest', $crypt    );
 
@@ -404,7 +411,7 @@ loop {
         when "inventory"|"i" {
             if $inventory.contents {
                 say "You are carrying:";
-                $inventory.list_contents("A %s.", 1);
+                $inventory.list_container_contents("A %s.");
             }
             else {
                 say "You are empty-handed.";
@@ -433,6 +440,43 @@ loop {
             }
 
             $thing."$verb"();
+        }
+
+        when /^ :s $<verb>=[\w+] [the]? $<noun1>=[\w+]
+                in [the]? $<noun2>=[\w+] $/ {
+            my $verb = $<verb>;
+            if %synonyms{$verb} -> $synonym {
+                $verb = $synonym;
+            }
+
+            unless $verb eq 'put' {
+                say "Sorry, I did not understand that.";
+                succeed;
+            }
+
+            my $thing = %things{$<noun1>.lc};
+            unless player_can_see($thing) {
+                say "You see no $<noun1> here.";
+                succeed;
+            }
+
+            my $container = %things{$<noun2>.lc};
+            unless player_can_see($container) {
+                say "You see no $<noun2> here.";
+                succeed;
+            }
+
+            unless $thing ~~ Takable {
+                say "You can't move the $<noun1>.";
+                succeed;
+            }
+
+            unless player_can_see_inside($container) {
+                $container.open;
+            }
+
+            say "You put the $<noun1> in the $<noun2>.";
+            $thing.put_in($container);
         }
 
         default {
