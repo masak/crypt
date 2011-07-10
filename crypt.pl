@@ -49,10 +49,6 @@ role Thing {
     has Str $.name;
     has Str $!description = "[Description of $!name]";
 
-    method there_is {
-        "There is a $!name here.";
-    }
-
     method examine {
         say $!description;
         self.?on_examine;
@@ -67,12 +63,6 @@ role Showable {
             $!is_visible = True;
             self.?on_show;
         }
-    }
-}
-
-class Car does Thing {
-    method there_is {
-        "Your $!name is here.";
     }
 }
 
@@ -98,6 +88,29 @@ role Openable {
         $!is_open = False;
         self.?on_close;
     }
+}
+
+role Container {
+    has Thing @.contents is rw;
+
+    method list_contents($description, $indent = 0) {
+        for %things{@.contents} -> $thing {
+            if player_can_see($thing) {
+                say '  ' x $indent, sprintf $description, $thing.name;
+                if player_can_see_inside($thing) {
+                    $thing.list_contents("The $thing.name() contains a %s.",
+                                         $indent + 1);
+                }
+            }
+        }
+    }
+
+    method on_open {
+        say "Opening the $.name reveals a {join " and a ", @.contents}.";
+    }
+}
+
+class Car does Thing does Openable does Container {
 }
 
 class Door does Thing does Showable does Openable {
@@ -131,12 +144,15 @@ class Brook does Thing {
     }
 }
 
-role Room does Thing {
+class Basket does Thing does Container {
+}
+
+my $room;
+role Room does Thing does Container {
     has Direction %.exits is rw;
     has Direction $.in;
     has Direction $.out;
     has Bool $!visited = False;
-    has Thing @.contents is rw;
 
     method connect(Direction $direction, Room $other_room) {
         my $opposite = opposite_direction($direction);
@@ -153,11 +169,7 @@ role Room does Thing {
     method look {
         say "[Description of room $!name]";
         say "";
-        for %things{@.contents} -> $thing {
-            if $thing !~~ Showable || $thing.is_visible {
-                say $thing.there_is;
-            }
-        }
+        self.list_contents("There is a %s here.");
         given %.exits {
             when 0 {
                 say "There are no obvious exits from here.";
@@ -176,6 +188,7 @@ role Room does Thing {
 
     method enter {
         say $!name;
+        $room = self;
 
         unless $!visited {
             say "";
@@ -192,18 +205,29 @@ class Hill does Room {
     }
 }
 
+class Chamber does Room {
+    method on_enter {
+        %things<leaves>.show;
+    }
+}
+
 my %things =
-    car    => Car.new(:name("car")),
-    door   => Door.new(:name("door")),
-    leaves => Leaves.new(:name("leaves")),
-    brook  => Brook.new(:name("brook")),
+    car        => Car.new(:name<car>, :contents<flashlight rope>),
+    flashlight => Thing.new(:name<flashlight>),
+    rope       => Thing.new(:name<rope>),
+    door       => Door.new(:name<door>),
+    leaves     => Leaves.new(:name<leaves>),
+    brook      => Brook.new(:name<brook>),
+    sign       => Thing.new(:name<sign>),
+    basket     => Basket.new(:name<basket>),
 ;
 
 my %rooms =
     clearing => Room.new( :name<Clearing>, :contents<car> ),
     hill     => Hill.new( :name<Hill>, :contents<door leaves brook>,
                           :in<south> ),
-    chamber  => Room.new( :name(<Chamber>), :out<north> ),
+    chamber  => Chamber.new( :name(<Chamber>), :contents<sign basket>,
+                             :out<north> ),
     hall     => Room.new( :name(<Hall>) ),
     cave     => Room.new( :name(<Cave>) ),
     crypt    => Room.new( :name(<Crypt>) ),
@@ -219,7 +243,24 @@ my %rooms =
 # $cave.connect(     'northwest', $crypt    );
 
 %rooms<clearing>.enter;
-my $room = %rooms<clearing>;
+
+sub room_contains(Thing $thing) {
+    return $thing.name.lc eq any($room.name.lc, $room.contents.list);
+}
+
+sub player_can_see(Thing $thing) {
+    my $thing_is_visible = $thing !~~ Showable || $thing.is_visible;
+
+    return room_contains($thing) && $thing_is_visible;
+}
+
+sub player_can_see_inside(Thing $thing) {
+    my $thing_is_open = $thing ~~ Container
+                        && ($thing !~~ Openable || $thing.is_open);
+
+    return player_can_see($thing) && $thing_is_open;
+}
+
 loop {
     say "";
     my $command = prompt "> ";
@@ -260,7 +301,6 @@ loop {
             my $direction = $command;
             if $room.exits{$direction} -> $new_room {
                 $new_room.enter;
-                $room = $new_room;
             }
             else {
                 say "Sorry, you can't go $direction from here.";
@@ -277,10 +317,7 @@ loop {
                 succeed;
             }
             my $thing = %things{$<noun>};
-            my $is_present
-                = $<noun>.lc eq any($room.name.lc, $room.contents.list);
-            my $is_visible = $thing !~~ Showable || $thing.is_visible;
-            unless $is_present && $is_visible {
+            unless player_can_see($thing) {
                 say "You see no $<noun> here.";
                 succeed;
             }
