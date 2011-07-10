@@ -48,6 +48,8 @@ sub opposite_direction(Direction $d) {
 role Thing {
     has Str $.name;
     has Str $!description = "[Description of $!name]";
+    has Str $.herephrase;
+    has Str $.carryphrase;
 
     method examine {
         say $!description;
@@ -59,7 +61,7 @@ role Showable {
     has Bool $.is_visible = False;
 
     method show {
-        unless $!is_visible {
+        unless $.is_visible {
             $!is_visible = True;
             self.?on_show;
         }
@@ -71,20 +73,20 @@ role Openable {
 
     method open {
         if $.is_open {
-            say "The $!name is open.";
+            say "The $.name is open.";
             return;
         }
-        say "You open the $!name.";
+        say "You open the $.name.";
         $!is_open = True;
         self.?on_open;
     }
 
     method close {
         unless $.is_open {
-            say "The $!name is closed.";
+            say "The $.name is closed.";
             return;
         }
-        say "You close the $!name.";
+        say "You close the $.name.";
         $!is_open = False;
         self.?on_close;
     }
@@ -93,12 +95,13 @@ role Openable {
 role Container {
     has Thing @.contents is rw;
 
-    method list_contents($description, $indent = 0) {
-        for %things{@.contents} -> $thing {
+    method list_contents($herephrase, $indent = 0) {
+        for %things{@.contents} -> Thing $thing {
             if player_can_see($thing) {
-                say '  ' x $indent, sprintf $description, $thing.name;
+                say '  ' x $indent,
+                    sprintf $thing.herephrase // $herephrase, $thing.name;
                 if player_can_see_inside($thing) {
-                    $thing.list_contents("The $thing.name() contains a %s.",
+                    $thing.list_contents("A %s is in the $thing.name().",
                                          $indent + 1);
                 }
             }
@@ -107,6 +110,15 @@ role Container {
 
     method on_open {
         say "Opening the $.name reveals a {join " and a ", @.contents}.";
+    }
+}
+
+class Inventory does Thing does Container {
+    method list_contents($carryphrase, $indent = 1) {
+        for %things{@.contents} -> Thing $thing {
+            say '  ' x $indent,
+                sprintf $thing.carryphrase // $carryphrase, $thing.name;
+        }
     }
 }
 
@@ -129,12 +141,6 @@ class Door does Thing does Showable does Openable {
 
     method on_close {
         %rooms<hill>.disconnect('south');
-    }
-}
-
-class Leaves does Thing does Showable {
-    method there_is {
-        "There are numerous leaves on the trees.";
     }
 }
 
@@ -196,6 +202,7 @@ role Room does Thing does Container {
         }
 
         $!visited = True;
+        self.?on_enter;
     }
 }
 
@@ -211,31 +218,89 @@ class Chamber does Room {
     }
 }
 
-sub room_contains(Thing $thing) {
-    return $thing.name.lc eq any $room.name.lc, $room.contents.map({$_}),
-                                   map { .contents.map({$_}) },
-                                   grep Container, %things{$room.contents};
+my $inventory = Inventory.new;
+
+sub exclude(@l, $e) { grep { $_ !=== $e }, @l }
+
+role Takable {
+    method take {
+        if inventory_contains($.name) {
+            say "You already have the $.name";
+            return;
+        }
+        say "You take the $.name.";
+        push $inventory.contents, $.name;
+        for $room, %things{$room.contents} -> $thing {
+            next unless $thing ~~ Container;
+            $thing.contents = exclude($thing.contents, $.name);
+        }
+    }
+
+    method drop {
+        unless inventory_contains($.name) {
+            say "You don't have the $.name";
+            return;
+        }
+        say "You drop the $.name on the ground.";
+        push $room.contents, $.name;
+        $inventory.contents = exclude($inventory.contents, $.name);
+    }
+}
+
+class Leaves does Thing does Showable does Takable {
+    method there_is {
+        "There are numerous leaves on the trees.";
+    }
+}
+
+class Flashlight does Thing does Takable {
+}
+
+class Rope does Thing does Takable {
+}
+
+sub room_contains(Str $name) {
+    return True if $name eq $room.name.lc;
+    return True if $name eq any($room.contents);
+    return True if $name eq any map { .contents.flat },
+                                grep Container, %things{$room.contents};
+    return False;
+}
+
+sub inventory_contains(Str $name) {
+    return True if $name eq any($inventory.contents);
+    return False;
 }
 
 sub player_can_see(Thing $thing) {
     my $thing_is_visible = $thing !~~ Showable || $thing.is_visible;
 
-    return room_contains($thing) && $thing_is_visible;
+    return False unless $thing_is_visible;
+    return False unless room_contains($thing.name)
+                        || inventory_contains($thing.name);
+
+    return True;
 }
 
 sub player_can_see_inside(Thing $thing) {
     my $thing_is_open = $thing ~~ Container
                         && ($thing !~~ Openable || $thing.is_open);
 
-    return player_can_see($thing) && $thing_is_open;
+    return False unless $thing_is_open;
+    return False unless player_can_see($thing);
+
+    return True;
 }
 
 my %things =
-    car        => Car.new(:name<car>, :contents("flashlight", "rope")),
-    flashlight => Thing.new(:name<flashlight>),
-    rope       => Thing.new(:name<rope>),
+    car        => Car.new(:name<car>, :contents<flashlight rope>,
+                          :herephrase("Your %s is parked here.")),
+    flashlight => Flashlight.new(:name<flashlight>),
+    rope       => Rope.new(:name<rope>),
     door       => Door.new(:name<door>),
-    leaves     => Leaves.new(:name<leaves>),
+    leaves     => Leaves.new(:name<leaves>,
+                    :herephrase("Numerous %s are hanging off the trees."),
+                    :carryphrase("69,105 %s.")),
     brook      => Brook.new(:name<brook>),
     sign       => Thing.new(:name<sign>),
     basket     => Basket.new(:name<basket>),
@@ -254,6 +319,10 @@ my %rooms =
 %things.push(%rooms);
 
 %rooms<clearing>.connect('east', %rooms<hill>);
+
+my %synonyms =
+    "x"     => "examine",
+;
 
 # The following lines will be dynamically applied by solved puzzles.
 #
@@ -309,28 +378,42 @@ loop {
             }
         }
 
-        when 'look'|'l' {
+        when "look"|"l" {
             $room.look;
         }
 
+        when "inventory"|"i" {
+            if $inventory.contents {
+                say "You are carrying:";
+                $inventory.list_contents("A %s.", 1);
+            }
+            else {
+                say "You are empty-handed.";
+            }
+        }
+
         when /^ $<verb>=[\w+] <.ws> [the]? <.ws> $<noun>=[\w+] $/ {
-            unless $<verb> eq any <examine open close> {
+            my $verb = $<verb>;
+            if %synonyms{$verb} -> $synonym {
+                $verb = $synonym;
+            }
+
+            unless $verb eq any <examine open close take drop> {
                 say "Sorry, I don't understand the verb '$<verb>'.";
                 succeed;
             }
-            my $thing = %things{$<noun>};
+            my $thing = %things{$<noun>.lc};
             unless player_can_see($thing) {
                 say "You see no $<noun> here.";
                 succeed;
             }
-            my $found_method;
-            try {
-                $thing."$<verb>"();
-                $found_method = True;
-            }
-            unless $found_method {
+
+            unless $thing.can($verb) {
                 say "You can't $<verb> the $<noun>.";
+                succeed;
             }
+
+            $thing."$verb"();
         }
 
         default {
