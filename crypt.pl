@@ -162,6 +162,9 @@ class Brook does Thing {
 class Basket does Thing does Container {
 }
 
+role Darkness {
+}
+
 my $room;
 role Room does Thing does Container {
     has Direction %.exits is rw;
@@ -181,10 +184,12 @@ role Room does Thing does Container {
         $room.exits.delete($opposite);
     }
 
-    method look {
+    method describe {
         say "[Description of room $!name]";
         say "";
-        self.list_contents("There is a %s here.");
+    }
+
+    method list_exits {
         given %.exits {
             when 0 {
                 say "There are no obvious exits from here.";
@@ -198,6 +203,17 @@ role Room does Thing does Container {
             default {
                 say "You can go {.keys[0..*-2].join(", ")} and {.keys[*-1]}.";
             }
+        }
+    }
+
+    method look {
+        if there_is_light() {
+            self.describe;
+            self.list_contents("There is a %s here.");
+            self.list_exits;
+        }
+        else {
+            say "It is pitch black.";
         }
     }
 
@@ -225,6 +241,15 @@ class Chamber does Room {
     method on_enter {
         %things<leaves>.show;
     }
+}
+
+class Hall does Room does Darkness {
+}
+
+class Cave does Room does Darkness {
+}
+
+class Crypt does Room does Darkness {
 }
 
 my $inventory = Inventory.new;
@@ -269,6 +294,21 @@ class Leaves does Thing does Showable does Takable {
 }
 
 class Flashlight does Thing does Takable {
+    has Bool $.is_on = False;
+
+    method switch_on {
+        if $.is_on {
+            say "It's already switched on.";
+        }
+        $!is_on = True;
+        say "You switch on the flashlight.";
+    }
+
+    method examine {
+        self.Thing::examine;
+        say "";
+        say "The $.name is switched {$.is_on ?? "on" !! "off"}.";
+    }
 }
 
 class Rope does Thing does Takable {
@@ -318,6 +358,16 @@ sub player_can_see_inside(Thing $thing) {
     return True;
 }
 
+sub there_is_light() {
+    my $there_is_sun = $room !~~ Darkness;
+    return True if $there_is_sun;
+
+    my $flashlight = %things<flashlight>;
+    my $flashlight_is_here = player_can_see($flashlight);
+    return True if $flashlight_is_here && $flashlight.is_on;
+    return False;
+}
+
 my %things =
     car        => Car.new(:name<car>, :contents<flashlight rope>,
                           :herephrase("Your %s is parked here.")),
@@ -339,9 +389,9 @@ my %rooms =
                           :in<south> ),
     chamber  => Chamber.new( :name(<Chamber>), :contents<sign basket>,
                              :out<north> ),
-    hall     => Room.new( :name(<Hall>) ),
-    cave     => Room.new( :name(<Cave>) ),
-    crypt    => Room.new( :name(<Crypt>) ),
+    hall     => Hall.new( :name(<Hall>) ),
+    cave     => Cave.new( :name(<Cave>) ),
+    crypt    => Crypt.new( :name(<Crypt>) ),
 ;
 %things.push(%rooms);
 
@@ -415,6 +465,21 @@ loop {
             }
             else {
                 say "You are empty-handed.";
+            }
+        }
+
+        when /^ :s [turn on||switch on] $<noun>=[[flash]?light] $/ {
+            my $flashlight = %things<flashlight>;
+            unless player_can_see($flashlight) {
+                say "You see no $<noun> here.";
+                succeed;
+            }
+
+            my $was_dark = !there_is_light;
+            $flashlight.switch_on;
+            if $was_dark {
+                say "";
+                $room.look;
             }
         }
 
