@@ -181,7 +181,7 @@ role Room does Thing does Container {
     method disconnect(Direction $direction) {
         my $opposite = opposite_direction($direction);
         my $other_room = self.exits.delete($direction);
-        $room.exits.delete($opposite);
+        $other_room.exits.delete($opposite);
     }
 
     method describe {
@@ -243,16 +243,13 @@ class Chamber does Room {
     }
 }
 
-class Hall does Room does Darkness {
-}
-
 class Cave does Room does Darkness {
 }
 
 class Crypt does Room does Darkness {
 }
 
-my $inventory = Inventory.new;
+my $inventory = Inventory.new();
 
 role Takable {
     method put_in(Container $container) {
@@ -277,6 +274,162 @@ role Takable {
         }
         say "You drop the $.name on the ground.";
         self.put_in($room);
+    }
+}
+
+class Disk does Thing does Takable {
+}
+
+my $used_abbreviated_syntax = False;
+class Hall does Room does Darkness {
+    has @!disks =
+        [5, 4, 3, 2, 1],
+        [],
+        [],
+    ;
+    has $!long_moves_made = 0;
+    my @sizes = <. tiny small middle large huge>;
+    my @rods  = <left middle right>;
+
+    method list_contents($herephrase) {
+        for %things{@.contents} -> Thing $thing {
+            next if $thing ~~ Disk;
+            if player_can_see($thing) {
+                say sprintf $thing.herephrase // $herephrase, $thing.name;
+            }
+        }
+        say "There are rods stuck in the floor with disks on them, ",
+            "like this:";
+        self.show_disks;
+        say "";
+    }
+
+    method show_disks {
+        say "";
+        my $indent = "     ";
+        my @c =
+            "     |     ",
+            "    ===    ",
+            "   =====   ",
+            "  =======  ",
+            " ========= ",
+            "===========",
+        ;
+        for reverse 0..5 -> $row {
+            say $indent, join "  ", map { @c[@!disks[$_][$row] // 0] }, 0..2;
+        }
+        say $indent, "-" x 37;
+        say $indent, join "  ", map { "     $_     " }, <A B C>;
+    }
+
+    sub inverse_index(@array, $value) {
+        my $index = (first { .value eq $value }, @array.pairs).key;
+        return $index;
+    }
+
+    method take_disk(Str $adjective) {
+        my $size  = inverse_index(@sizes, $adjective);
+        my $old_rod = first { $size == any @!disks[$_].list }, 0..2;
+
+        if defined $old_rod {
+            if @!disks[$old_rod][*-1] != $size {
+                say "You can't take the $adjective disk, because it is under ",
+                    (join " and ", map { "the @sizes[$_] disk" },
+                     grep { $_ < $size }, @!disks[$old_rod].list), ".";
+                return;
+            }
+            pop @!disks[$old_rod];
+        }
+
+        %things{"$adjective disk"}.take;
+
+        if defined $old_rod {
+            self.?on_move_disk($old_rod);
+        }
+    }
+
+    method move_disk_to_rod(Str $adjective, Str $position) {
+        my $size  = inverse_index(@sizes, $adjective);
+        my $old_rod = first { $size == any @!disks[$_].list }, 0..2;
+
+        if defined $old_rod && @!disks[$old_rod][*-1] != $size {
+            say "You can't take the $adjective disk, because it is under ",
+                (join " and ", map { "the @sizes[$_] disk" },
+                 grep { $_ < $size }, @!disks[$old_rod].list), ".";
+            return;
+        }
+
+        my $new_rod = inverse_index(@rods, $position);
+        if @!disks[$new_rod] {
+            if @!disks[$new_rod][*-1] == $size {
+                say "The $adjective disk is already on the $position rod.";
+                return;
+            }
+            elsif @!disks[$new_rod][*-1] < $size {
+                say "A sense of dread fills you as you attempt to put a ",
+                    "bigger disk on a smaller one.";
+                return;
+            }
+        }
+
+        if defined $old_rod {
+            pop @!disks[$old_rod];
+        }
+
+        %things{"$adjective disk"}.put_in($room);
+        push @!disks[$new_rod], $size;
+
+        say "You put the $adjective disk on the $position rod.";
+        self.show_disks;
+
+        if defined $old_rod {
+            $!long_moves_made++;
+            if 3 <= $!long_moves_made < 5 && !$used_abbreviated_syntax {
+                my $abbr = chr(ord("A") + $old_rod) ~ chr(ord("A") + $new_rod);
+                say "(You can also write this move as $abbr)";
+            }
+        }
+
+        self.?on_move_disk($old_rod);
+    }
+
+    method move_rod_to_rod(Int $old_rod, Int $new_rod) {
+        unless @!disks[$old_rod] {
+            say "The {@rods[$old_rod]} rod is empty.";
+            return;
+        }
+
+        my $size = @!disks[$old_rod][*-1];
+        if @!disks[$new_rod] {
+            if @!disks[$new_rod][*-1] < $size {
+                say "A sense of dread fills you as you attempt to put a ",
+                    "bigger disk on a smaller one.";
+                return;
+            }
+        }
+
+        pop @!disks[$old_rod];
+        push @!disks[$new_rod], $size;
+
+        my $adjective = @sizes[$size];
+        my $position  = @rods[$new_rod];
+
+        say "You put the $adjective disk on the $position rod.";
+        self.show_disks;
+
+        self.?on_move_disk($old_rod);
+    }
+
+    method on_move_disk($old_rod) {
+        if @!disks[2] == 5 {
+            say "The whole floor tips, and reveals a hole beneath the wall.";
+            %rooms<hall>.connect('down', %rooms<cave>);
+        }
+
+        if defined $old_rod && $old_rod == 2 && @!disks[2] == 3 {
+            say "The whole floor tips back, hiding the hole again.";
+            %rooms<hall>.disconnect('down');
+        }
     }
 }
 
@@ -381,6 +534,11 @@ my %things =
                     :herephrase("A small brook runs through the forest.")),
     sign       => Thing.new(:name<sign>),
     basket     => Basket.new(:name<basket>),
+    "tiny disk"   => Disk.new(:name("tiny disk"),   :size(1)),
+    "small disk"  => Disk.new(:name("small disk"),  :size(2)),
+    "middle disk" => Disk.new(:name("middle disk"), :size(3)),
+    "large disk"  => Disk.new(:name("large disk"),  :size(4)),
+    "huge disk"   => Disk.new(:name("huge disk"),   :size(5)),
 ;
 
 my %rooms =
@@ -389,22 +547,20 @@ my %rooms =
                           :in<south> ),
     chamber  => Chamber.new( :name(<Chamber>), :contents<sign basket>,
                              :out<north> ),
-    hall     => Hall.new( :name(<Hall>) ),
+    hall     => Hall.new( :name(<Hall>),
+                          :contents(map { "$_ disk" },
+                                    <tiny small middle large huge>)),
     cave     => Cave.new( :name(<Cave>) ),
     crypt    => Crypt.new( :name(<Crypt>) ),
 ;
 %things.push(%rooms);
 
 %rooms<clearing>.connect('east', %rooms<hill>);
+%rooms<cave>.connect('northwest', %rooms<crypt>);
 
 my %synonyms =
     "x"     => "examine",
 ;
-
-# The following lines will be dynamically applied by solved puzzles.
-#
-# $hall.connect(     'down',      $cave     );
-# $cave.connect(     'northwest', $crypt    );
 
 %rooms<clearing>.enter;
 
@@ -542,6 +698,62 @@ loop {
 
             say "You put the $<noun1> in the $<noun2>.";
             $thing.put_in($container);
+        }
+
+        when /^ :s [move|put|take] [the]? disk / {
+            say "Which disk do you mean; the tiny disk, the small disk, ",
+                "the middle disk,";
+            say "the large disk, or the huge disk?";
+        }
+
+        when /^ :s take [the]?
+                $<adjective>=[tiny||small||middle||large||huge] disk / {
+
+            unless player_can_see(%things{"$<adjective> disk"}) {
+                say "You see no $<adjective> disk here.";
+                succeed;
+            }
+            if $room ~~ Hall {
+                $room.take_disk(~$<adjective>);
+            }
+            else {
+                %things{"$<adjective> disk"}.take;
+            }
+        }
+
+        when /^ :s [move|put] [the]?
+                $<adjective>=[tiny||small||middle||large||huge]
+                disk [on|to] [the]?
+                $<position>=[left||middle||right]
+                rod $/ {
+
+            unless player_can_see(%things{"$<adjective> disk"}) {
+                say "You see no $<adjective> disk here.";
+                succeed;
+            }
+            unless $room ~~ Hall {
+                say "You see no rod here.";
+                succeed;
+            }
+
+            $room.move_disk_to_rod(~$<adjective>, ~$<position>);
+        }
+
+        when /^ :s (<[abcABC]>)(<[abcABC]>) $/ {
+            $used_abbreviated_syntax = True;
+
+            unless $room ~~ Hall {
+                say "That command only works in the Hall.";
+                succeed;
+            }
+
+            my $old_rod = ord($0.lc) - ord("a");
+            my $new_rod = ord($1.lc) - ord("a");
+            if $old_rod == $new_rod {
+                succeed;
+            }
+
+            $room.move_rod_to_rod($old_rod, $new_rod);
         }
 
         default {
