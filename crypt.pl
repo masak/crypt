@@ -68,6 +68,9 @@ role Showable {
     }
 }
 
+role Implicit {
+}
+
 role Openable {
     has Bool $.is_open;
 
@@ -108,12 +111,11 @@ role Container {
     method list_contents($herephrase) {
         for %things{@.contents} -> Thing $thing {
             if player_can_see($thing) {
+                next if $thing ~~ Implicit;
                 say sprintf $thing.herephrase // $herephrase, $thing.name;
                 if player_can_see_inside($thing) && $thing.contents {
                     say "The $thing.name() contains:";
-                    $thing.list_container_contents(
-                        "A %s."
-                    );
+                    $thing.list_container_contents("A %s.");
                 }
             }
         }
@@ -123,6 +125,10 @@ role Container {
         for %things{@.contents} -> Thing $thing {
             say '  ' x $indent,
                 sprintf $thing.containphrase // $containphrase, $thing.name;
+            if player_can_see_inside($thing) && $thing.contents {
+                say '  ' x $indent, "The $thing.name() contains:";
+                $thing.list_container_contents("A %s.", $indent + 1);
+            }
         }
     }
 
@@ -156,7 +162,7 @@ class Door does Thing does Showable does Openable {
     }
 }
 
-class Brook does Thing {
+class Brook does Thing does Container {
 }
 
 class Basket does Thing does Container {
@@ -238,9 +244,6 @@ class Hill does Room {
 }
 
 class Chamber does Room {
-    method on_enter {
-        %things<leaves>.show;
-    }
 }
 
 class Cave does Room does Darkness {
@@ -259,10 +262,13 @@ class Crypt does Room does Darkness {
 my $inventory = Inventory.new();
 
 role Takable {
-    method put_in(Container $container) {
-        current_container_of($.name).remove($.name);
-        $container.add($.name);
-        self.?on_put_in($container);
+    method put_in(Container $new_container) {
+        my $old_container = current_container_of($.name);
+        $old_container.remove($.name);
+        self.?on_remove_from($old_container);
+
+        $new_container.add($.name);
+        self.?on_put_in($new_container);
     }
 
     method take {
@@ -440,7 +446,10 @@ class Hall does Room does Darkness {
     }
 }
 
-class Leaves does Thing does Showable does Takable {
+class Fire does Thing does Container {
+}
+
+class Leaves does Thing does Implicit does Takable {
     method on_put_in(Container $_) {
         when Car {
             say "Great. Now your car is full of leaves.";
@@ -449,6 +458,9 @@ class Leaves does Thing does Showable does Takable {
             say "The ground rumbles and shakes a bit.";
             say "A passageway opens up to the south, into the caverns.";
             %rooms<chamber>.connect('south', %rooms<hall>);
+        }
+        when Fire {
+            say "The leaves burn up within seconds.";
         }
     }
 }
@@ -474,14 +486,32 @@ class Flashlight does Thing does Takable {
 class Rope does Thing does Takable {
 }
 
-class Fire does Thing {
+class Helmet does Thing does Implicit does Container does Takable {
+    method on_remove_from(Container $_) {
+        when Brook {
+            %things<water>.put_in(self);
+        }
+    }
+}
+
+class Water does Thing does Implicit does Takable {
+    method on_put_in(Container $_) {
+        when Inventory {
+            say "Your bare hands aren't very good at carrying water.";
+            self.drop;
+        }
+        when Fire {
+            say "The fire wanes and dies.";
+            $room.remove("fire");
+        }
+    }
 }
 
 sub current_container_of(Str $name) {
     return $room      if $name eq $room.name.lc;
     return $room      if $name eq any $room.contents;
     return $inventory if $name eq any $inventory.contents;
-    for %things{$room.contents} -> $thing {
+    for %things{$room.contents, $inventory.contents} -> $thing {
         return $thing if $name eq any $thing.?contents;
     }
     die "Couldn't find the current container of $name";
@@ -497,7 +527,10 @@ sub room_contains(Str $name) {
 }
 
 sub inventory_contains(Str $name) {
-    return True if $name eq any($inventory.contents);
+    return True if $name eq any $inventory.contents;
+    return True if $name eq any map { .contents.flat },
+                                grep { player_can_see_inside($_) },
+                                %things{$inventory.contents};
     return False;
 }
 
@@ -543,10 +576,10 @@ my %things =
     rope       => Rope.new(:name<rope>),
     door       => Door.new(:name<door>),
     leaves     => Leaves.new(:name<leaves>,
-                    :herephrase("Numerous leaves are adorning the trees."),
                     :containphrase("69,105 %s.")),
     brook      => Brook.new(:name<brook>,
                     :herephrase("A small brook runs through the forest.")),
+    water      => Water.new(:name<water>, :containphrase("Some %s.")),
     sign       => Thing.new(:name<sign>),
     basket     => Basket.new(:name<basket>),
     "tiny disk"   => Disk.new(:name("tiny disk"),   :size(1)),
@@ -555,16 +588,17 @@ my %things =
     "large disk"  => Disk.new(:name("large disk"),  :size(4)),
     "huge disk"   => Disk.new(:name("huge disk"),   :size(5)),
     fire       => Fire.new(:name<fire>),
+    helmet     => Helmet.new(:name<helmet>),
 ;
 
 my %rooms =
     clearing => Room.new( :name<Clearing>, :contents<car> ),
-    hill     => Hill.new( :name<Hill>, :contents<door leaves brook>,
+    hill     => Hill.new( :name<Hill>, :contents<door leaves brook water>,
                           :in<south> ),
     chamber  => Chamber.new( :name(<Chamber>), :contents<sign basket>,
                              :out<north> ),
     hall     => Hall.new( :name(<Hall>),
-                          :contents(map { "$_ disk" },
+                          :contents(<helmet>, map { "$_ disk" },
                                     <tiny small middle large huge>)),
     cave     => Cave.new( :name(<Cave>), :contents<fire> ),
     crypt    => Crypt.new( :name(<Crypt>) ),
@@ -668,7 +702,12 @@ loop {
                 say "Sorry, I don't understand the verb '$<verb>'.";
                 succeed;
             }
+
             my $thing = %things{$<noun>.lc};
+            unless $thing {
+                say "I am unfamiliar with the noun '$<noun>'.";
+                succeed;
+            }
             unless player_can_see($thing) {
                 say "You see no $<noun> here.";
                 succeed;
@@ -695,12 +734,20 @@ loop {
             }
 
             my $thing = %things{$<noun1>.lc};
+            unless $thing {
+                say "I am unfamiliar with the noun '$<noun1>'.";
+                succeed;
+            }
             unless player_can_see($thing) {
                 say "You see no $<noun1> here.";
                 succeed;
             }
 
             my $container = %things{$<noun2>.lc};
+            unless $container {
+                say "I am unfamiliar with the noun '$<noun2>'.";
+                succeed;
+            }
             unless player_can_see($container) {
                 say "You see no $<noun2> here.";
                 succeed;
