@@ -4,9 +4,9 @@ say "CRYPT";
 say "=====";
 say "";
 
-say "You've heard there's supposed to be a hidden crypt in these woods.";
-say "One containing a priceless treasure. Well, there's only one way to";
-say "find out...";
+say "You've heard there's supposed to be an ancient hidden crypt in these";
+say "woods. One containing a priceless treasure. Well, there's only one way";
+say "to find out...";
 say "";
 
 my @directions = <
@@ -244,6 +244,13 @@ class Chamber does Room {
 }
 
 class Cave does Room does Darkness {
+    method on_try_exit($direction) {
+        if $direction eq "northwest" && player_can_see(%things<fire>) {
+            say "You try to walk past the fire, but it's too hot!";
+            return False;
+        }
+        return True;
+    }
 }
 
 class Crypt does Room does Darkness {
@@ -467,6 +474,9 @@ class Flashlight does Thing does Takable {
 class Rope does Thing does Takable {
 }
 
+class Fire does Thing {
+}
+
 sub current_container_of(Str $name) {
     return $room      if $name eq $room.name.lc;
     return $room      if $name eq any $room.contents;
@@ -518,6 +528,11 @@ sub there_is_light() {
     my $flashlight = %things<flashlight>;
     my $flashlight_is_here = player_can_see($flashlight);
     return True if $flashlight_is_here && $flashlight.is_on;
+
+    my $fire = %things<fire>;
+    my $fire_is_here = player_can_see($fire);
+    return True if $fire_is_here;
+
     return False;
 }
 
@@ -539,6 +554,7 @@ my %things =
     "middle disk" => Disk.new(:name("middle disk"), :size(3)),
     "large disk"  => Disk.new(:name("large disk"),  :size(4)),
     "huge disk"   => Disk.new(:name("huge disk"),   :size(5)),
+    fire       => Fire.new(:name<fire>),
 ;
 
 my %rooms =
@@ -550,7 +566,7 @@ my %rooms =
     hall     => Hall.new( :name(<Hall>),
                           :contents(map { "$_ disk" },
                                     <tiny small middle large huge>)),
-    cave     => Cave.new( :name(<Cave>) ),
+    cave     => Cave.new( :name(<Cave>), :contents<fire> ),
     crypt    => Crypt.new( :name(<Crypt>) ),
 ;
 %things.push(%rooms);
@@ -603,7 +619,10 @@ loop {
         when any(@directions) {
             my $direction = $command;
             if $room.exits{$direction} -> $new_room {
-                $new_room.enter;
+                my $succeeded = $room.?on_try_exit($direction) // True;
+                if $succeeded {
+                    $new_room.enter;
+                }
             }
             else {
                 say "Sorry, you can't go $direction from here.";
