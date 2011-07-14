@@ -95,6 +95,29 @@ role Openable {
     }
 }
 
+role Platform {
+    has Thing @.supports is rw;
+
+    method add(Str $name) {
+        @.supports.push($name);
+    }
+
+    method remove(Str $name) {
+        @.supports = exclude(@.supports, $name);
+    }
+
+    method list_platform_supports($containphrase, $indent = 1) {
+        for %things{@.supports} -> Thing $thing {
+            say '  ' x $indent,
+                sprintf $thing.containphrase // $containphrase, $thing.name;
+            if player_can_see_inside($thing) && $thing.contents {
+                say '  ' x $indent, "The $thing.name() contains:";
+                $thing.list_container_contents("A %s.", $indent + 1);
+            }
+        }
+    }
+}
+
 sub exclude(@l, $e) { grep { $_ !=== $e }, @l }
 
 role Container {
@@ -116,6 +139,10 @@ role Container {
                 if player_can_see_inside($thing) && $thing.contents {
                     say "The $thing.name() contains:";
                     $thing.list_container_contents("A %s.");
+                }
+                if $thing ~~ Platform && $thing.supports {
+                    say "On the $thing.name() you see:";
+                    $thing.list_platform_supports("A %s.");
                 }
             }
         }
@@ -234,12 +261,24 @@ role Room does Thing does Container {
 
         $!visited = True;
         self.?on_enter;
+        if %things<doom>.activated {
+            say "An alarm is sounding.";
+        }
     }
 }
 
 class Hill does Room {
     method on_examine {
         %things<door>.show;
+    }
+
+    method on_enter {
+        if player_can_see(%things<butterfly>) {
+            say "Congratulations! You found the treasure and got out with it ",
+                "alive!";
+            say "Thank you for playing.";
+            exit;
+        }
     }
 }
 
@@ -259,16 +298,16 @@ class Cave does Room does Darkness {
 class Crypt does Room does Darkness {
 }
 
-my $inventory = Inventory.new();
+my $inventory = Inventory.new(:contents("flashlight", "tiny disk"));
 
 role Takable {
-    method put_in(Container $new_container) {
-        my $old_container = current_container_of($.name);
-        $old_container.remove($.name);
-        self.?on_remove_from($old_container);
+    method put($new_receiver) {
+        my $old_receiver = current_container_of($.name);
+        $old_receiver.remove($.name);
+        self.?on_remove_from($old_receiver);
 
-        $new_container.add($.name);
-        self.?on_put_in($new_container);
+        $new_receiver.add($.name);
+        self.?on_put($new_receiver);
     }
 
     method take {
@@ -277,7 +316,7 @@ role Takable {
             return;
         }
         say "You take the $.name.";
-        self.put_in($inventory);
+        self.put($inventory);
     }
 
     method drop {
@@ -286,11 +325,29 @@ role Takable {
             return;
         }
         say "You drop the $.name on the ground.";
-        self.put_in($room);
+        self.put($room);
     }
 }
 
-class Disk does Thing does Takable {
+role Heavy {
+    method on_remove_from($_) {
+        when Platform {
+            unless grep Heavy, %things<pedestal>.supports {
+                say "An alarm starts sounding in the whole cavern.";
+                %things<doom>.activate;
+            }
+        }
+    }
+
+    method on_put($_) {
+        when Platform {
+            say "The alarm stops.";
+            %things<doom>.inactivate;
+        }
+    }
+}
+
+class Disk does Thing does Takable does Heavy {
 }
 
 my $used_abbreviated_syntax = False;
@@ -305,16 +362,16 @@ class Hall does Room does Darkness {
     my @rods  = <left middle right>;
 
     method list_contents($herephrase) {
+        say "There are rods stuck in the floor with disks on them, ",
+            "like this:";
+        self.show_disks;
+        say "";
         for %things{@.contents} -> Thing $thing {
             next if $thing ~~ Disk;
             if player_can_see($thing) {
                 say sprintf $thing.herephrase // $herephrase, $thing.name;
             }
         }
-        say "There are rods stuck in the floor with disks on them, ",
-            "like this:";
-        self.show_disks;
-        say "";
     }
 
     method show_disks {
@@ -389,7 +446,7 @@ class Hall does Room does Darkness {
             pop @!disks[$old_rod];
         }
 
-        %things{"$adjective disk"}.put_in($room);
+        %things{"$adjective disk"}.put($room);
         push @!disks[$new_rod], $size;
 
         say "You put the $adjective disk on the $position rod.";
@@ -450,7 +507,7 @@ class Fire does Thing does Container {
 }
 
 class Leaves does Thing does Implicit does Takable {
-    method on_put_in(Container $_) {
+    method on_put(Container $_) {
         when Car {
             say "Great. Now your car is full of leaves.";
         }
@@ -489,13 +546,13 @@ class Rope does Thing does Takable {
 class Helmet does Thing does Implicit does Container does Takable {
     method on_remove_from(Container $_) {
         when Brook {
-            %things<water>.put_in(self);
+            %things<water>.put(self);
         }
     }
 }
 
 class Water does Thing does Implicit does Takable {
-    method on_put_in(Container $_) {
+    method on_put($_) {
         when Inventory {
             say "Your bare hands aren't very good at carrying water.";
             self.drop;
@@ -507,23 +564,52 @@ class Water does Thing does Implicit does Takable {
     }
 }
 
+class Pedestal does Thing does Platform {
+}
+
+class Butterfly does Thing does Takable does Heavy {
+}
+
+class Doom {
+    has Bool $.activated = False;
+    has Int $!time_left;
+
+    method activate {
+        $!activated = True;
+        $!time_left = 4;
+    }
+
+    method inactivate {
+        $!activated = False;
+    }
+
+    method tick {
+        if $!activated {
+            $!time_left--;
+            unless $!time_left {
+                say "The alarm starts sounding louder.";
+                say "The whole cavern shakes, and falls in on itself.";
+                say "You die.";
+                say "Thank you for playing.";
+                exit;
+            }
+        }
+    }
+}
+
 sub current_container_of(Str $name) {
     return $room      if $name eq $room.name.lc;
     return $room      if $name eq any $room.contents;
     return $inventory if $name eq any $inventory.contents;
     for %things{$room.contents, $inventory.contents} -> $thing {
         return $thing if $name eq any $thing.?contents;
+        return $thing if $name eq any $thing.?supports;
     }
     die "Couldn't find the current container of $name";
 }
 
 sub room_contains(Str $name) {
-    return True if $name eq $room.name.lc;
-    return True if $name eq any $room.contents;
-    return True if $name eq any map { .contents.flat },
-                                grep { player_can_see_inside($_) },
-                                %things{$room.contents};
-    return False;
+    return current_container_of($name).name eq any $room.name, $room.contents;
 }
 
 sub inventory_contains(Str $name) {
@@ -589,6 +675,9 @@ my %things =
     "huge disk"   => Disk.new(:name("huge disk"),   :size(5)),
     fire       => Fire.new(:name<fire>),
     helmet     => Helmet.new(:name<helmet>),
+    pedestal   => Pedestal.new(:name<pedestal>, :supports<butterfly>),
+    butterfly  => Butterfly.new(:name<butterfly>),
+    doom       => Doom.new(),
 ;
 
 my %rooms =
@@ -601,7 +690,7 @@ my %rooms =
                           :contents(<helmet>, map { "$_ disk" },
                                     <tiny small middle large huge>)),
     cave     => Cave.new( :name(<Cave>), :contents<fire> ),
-    crypt    => Crypt.new( :name(<Crypt>) ),
+    crypt    => Crypt.new( :name(<Crypt>), :contents<pedestal> ),
 ;
 %things.push(%rooms);
 
@@ -657,6 +746,7 @@ loop {
                 if $succeeded {
                     $new_room.enter;
                 }
+                %things<doom>.tick;
             }
             else {
                 say "Sorry, you can't go $direction from here.";
@@ -719,10 +809,11 @@ loop {
             }
 
             $thing."$verb"();
+            %things<doom>.tick;
         }
 
         when /^ :s $<verb>=[\w+] [the]? $<noun1>=[\w+]
-                in [the]? $<noun2>=[\w+] $/ {
+                $<prep>=[in||on] [the]? $<noun2>=[\w+] $/ {
             my $verb = $<verb>;
             if %synonyms{$verb} -> $synonym {
                 $verb = $synonym;
@@ -733,9 +824,21 @@ loop {
                 succeed;
             }
 
-            my $thing = %things{$<noun1>.lc};
+            if $<noun1> eq "disk" && $room ~~ Hall {
+                say "Which disk do you mean; the tiny disk, the small disk, ",
+                    "the middle disk,";
+                say "the large disk, or the huge disk?";
+                succeed;
+            }
+
+            my $noun1 = $<noun1>;
+            if $<noun1> eq "disk" && $room ~~ Crypt {
+                $noun1 = "tiny disk";
+            }
+
+            my $thing = %things{$noun1.lc};
             unless $thing {
-                say "I am unfamiliar with the noun '$<noun1>'.";
+                say "I am unfamiliar with the noun '$noun1'.";
                 succeed;
             }
             unless player_can_see($thing) {
@@ -743,27 +846,39 @@ loop {
                 succeed;
             }
 
-            my $container = %things{$<noun2>.lc};
-            unless $container {
+            my $receiver = %things{$<noun2>.lc};
+            unless $receiver {
                 say "I am unfamiliar with the noun '$<noun2>'.";
                 succeed;
             }
-            unless player_can_see($container) {
+            unless player_can_see($receiver) {
                 say "You see no $<noun2> here.";
                 succeed;
             }
 
             unless $thing ~~ Takable {
-                say "You can't move the $<noun1>.";
+                say "You can't move the $noun1.";
                 succeed;
             }
 
-            unless player_can_see_inside($container) {
-                $container.open;
+            if $<prep> eq "in" {
+                unless $receiver ~~ Container {
+                    say "You can't put things in the $<noun2>.";
+                    succeed;
+                }
+                unless player_can_see_inside($receiver) {
+                    $receiver.open;
+                }
+                say "You put the $noun1 in the $<noun2>.";
             }
-
-            say "You put the $<noun1> in the $<noun2>.";
-            $thing.put_in($container);
+            elsif $<prep> eq "on" {
+                unless $receiver ~~ Platform {
+                    say "You can't put things on the $<noun2>.";
+                    succeed;
+                }
+                say "You put the $noun1 on the $<noun2>.";
+            }
+            $thing.put($receiver);
         }
 
         when /^ :s [move|put|take] [the]? disk / {
