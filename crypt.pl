@@ -273,7 +273,7 @@ class Hill does Room {
     }
 
     method on_enter {
-        if player_can_see(%things<butterfly>) {
+        if inventory_contains 'butterfly' {
             say "Congratulations! You found the treasure and got out with it ",
                 "alive!";
             say "Thank you for playing.";
