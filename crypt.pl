@@ -298,7 +298,7 @@ class Cave does Room does Darkness {
 class Crypt does Room does Darkness {
 }
 
-my $inventory = Inventory.new(:contents("flashlight", "tiny disk"));
+my $inventory = Inventory.new();
 
 role Takable {
     method put($new_receiver) {
