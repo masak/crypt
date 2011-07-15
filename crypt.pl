@@ -9,6 +9,13 @@ say "woods. One containing a priceless treasure. Well, there's only one way";
 say "to find out...";
 say "";
 
+my %descriptions;
+for slurp("descriptions").split(/\n\n/) {
+    /^^ '== ' (\w+) \n (.*)/
+        or die "Could not parse 'descriptions' file: $_";
+    %descriptions{$0} = ~$1;
+}
+
 my @directions = <
     north south east west
     northeast northwest southeast southwest
@@ -47,7 +54,7 @@ sub opposite_direction(Direction $d) {
 
 role Thing {
     has Str $.name;
-    has Str $!description = "[Description of $!name]";
+    has Str $!description = %descriptions{$.name};
     has Str $.herephrase;
     has Str $.containphrase;
 
@@ -217,11 +224,6 @@ role Room does Thing does Container {
         $other_room.exits.delete($opposite);
     }
 
-    method describe {
-        say "[Description of room $!name]";
-        say "";
-    }
-
     method list_exits {
         given %.exits {
             when 0 {
@@ -241,7 +243,7 @@ role Room does Thing does Container {
 
     method look {
         if there_is_light() {
-            self.describe;
+            self.examine;
             self.list_contents("There is a %s here.");
             self.list_exits;
         }
