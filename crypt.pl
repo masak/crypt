@@ -765,7 +765,7 @@ loop {
             succeed;
         }
 
-        when "help"|"h"|"?" {
+        when /^help>>/|"h"|"?" {
             say "Here are some (made-up) examples of commands you can use:";
             say "";
             say "look (l)                             | ",
