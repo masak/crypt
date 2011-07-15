@@ -733,6 +733,13 @@ loop {
                 "put banana in bag";
         }
 
+        when /^ :s go (\w+) $/
+             && $0 eq any @directions, %abbr_directions.keys, <in out> {
+
+            $command = ~$0;
+            proceed;
+        }
+
         when any(%abbr_directions.keys) {
             $command = %abbr_directions{$command};
             proceed;
