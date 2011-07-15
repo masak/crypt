@@ -698,9 +698,12 @@ my %rooms =
 %rooms<cave>.connect('northwest', %rooms<crypt>);
 
 my %synonyms =
-    "x"     => "examine",
-    "look"  => "examine",
-    "pick"  => "take",
+    "x"        => "examine",
+    "look"     => "examine",
+    "pick"     => "take",
+    "get"      => "take",
+    "retrieve" => "take",
+    "retreive" => "take",  # might as well
 ;
 
 %rooms<clearing>.enter;
