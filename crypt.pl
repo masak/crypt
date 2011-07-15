@@ -699,6 +699,8 @@ my %rooms =
 
 my %synonyms =
     "x"     => "examine",
+    "look"  => "examine",
+    "pick"  => "take",
 ;
 
 %rooms<clearing>.enter;
@@ -718,6 +720,17 @@ loop {
 
         when /^ \s* $/ {
             succeed;
+        }
+
+        when "help"|"h"|"?" {
+            say "Here are some (made-up) examples of commands you can use:";
+            say "";
+            say "look (l)                             | ",
+                "take banana";
+            say "examine banana (x banana)            | ",
+                "drop banana";
+            say "[go] north/south/east/west (n/s/e/w) | ",
+                "put banana in bag";
         }
 
         when any(%abbr_directions.keys) {
@@ -757,6 +770,27 @@ loop {
             $room.look;
         }
 
+        when /^ :s look in $<noun>=[\w+] $/ {
+            my $thing = %things{$<noun>};
+
+            unless $thing {
+                say "I am unfamiliar with the noun '$<noun>'.";
+                succeed;
+            }
+            unless player_can_see($thing) {
+                say "You see no $<noun> here.";
+                succeed;
+            }
+
+            unless player_can_see_inside($thing) {
+                say "You can't see inside the $<noun>.";
+                succeed;
+            }
+
+            say "The $thing.name() contains:";
+            $thing.list_container_contents("A %s.");
+        }
+
         when "inventory"|"i" {
             if $inventory.contents {
                 say "You are carrying:";
@@ -790,6 +824,7 @@ loop {
 
             unless $verb eq any <examine open close take drop> {
                 say "Sorry, I don't understand the verb '$<verb>'.";
+                say "Type 'help' for suggestions.";
                 succeed;
             }
 
@@ -821,6 +856,7 @@ loop {
 
             unless $verb eq 'put' {
                 say "Sorry, I did not understand that.";
+                say "Type 'help' for suggestions.";
                 succeed;
             }
 
@@ -939,6 +975,7 @@ loop {
 
         default {
             say "Sorry, I did not understand that.";
+            say "Type 'help' for suggestions.";
         }
     }
 }
