@@ -175,6 +175,10 @@ class Inventory does Thing does Container {
 }
 
 class Car does Thing does Openable does Container {
+    method go {
+        say "You get in the car, but then remember that you haven't found";
+        say "the treasure yet, so you get out again.";
+    }
 }
 
 class Grass does Thing does Implicit {
@@ -872,7 +876,7 @@ loop {
                 $verb = $synonym;
             }
 
-            unless $verb eq any <examine open close take drop read> {
+            unless $verb eq any <examine open close take drop read go> {
                 say "Sorry, I don't understand the verb '$<verb>'.";
                 say "Type 'help' for suggestions.";
                 succeed;
