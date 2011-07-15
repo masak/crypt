@@ -11,7 +11,7 @@ say "";
 
 my %descriptions;
 for slurp("descriptions").split(/\n\n/) {
-    /^^ '== ' (\w+) \n (.*)/
+    /^^ '== ' (\N+) \n (.*)/
         or die "Could not parse 'descriptions' file: $_";
     %descriptions{$0} = ~$1;
 }
@@ -177,11 +177,19 @@ class Inventory does Thing does Container {
 class Car does Thing does Openable does Container {
 }
 
-class Door does Thing does Showable does Openable {
+class Grass does Thing does Implicit {
     method on_examine {
-        self.show;
+        %things<door>.show;
     }
+}
 
+class Bushes does Thing does Implicit {
+    method on_examine {
+        %things<door>.show;
+    }
+}
+
+class Door does Thing does Showable does Openable {
     method on_show {
         say "You discover a door in the hill, under the thick grass!";
     }
@@ -270,10 +278,6 @@ role Room does Thing does Container {
 }
 
 class Hill does Room {
-    method on_examine {
-        %things<door>.show;
-    }
-
     method on_enter {
         if inventory_contains 'butterfly' {
             say "Congratulations! You found the treasure and got out with it ",
@@ -345,6 +349,17 @@ role Heavy {
         when Platform {
             say "The alarm stops.";
             %things<doom>.inactivate;
+        }
+    }
+}
+
+role Readable {
+    method read {
+        if there_is_light() {
+            self.examine;
+        }
+        else {
+            say "You would read it, if there were any light here!";
         }
     }
 }
@@ -508,6 +523,9 @@ class Hall does Room does Darkness {
 class Fire does Thing does Container {
 }
 
+class Trees does Thing does Implicit {
+}
+
 class Leaves does Thing does Implicit does Takable {
     method on_put(Container $_) {
         when Car {
@@ -599,6 +617,19 @@ class Doom {
     }
 }
 
+class Sarcophagi does Thing does Implicit {
+}
+
+class Sign does Thing does Readable {
+}
+
+class Walls does Thing does Implicit does Readable {
+    method examine {
+        say %descriptions{"walls:$room.name()"}.lines.pick;
+        self.?on_examine;
+    }
+}
+
 sub current_container_of(Str $name) {
     return $room      if $name eq $room.name.lc;
     return $room      if $name eq any $room.contents;
@@ -662,13 +693,16 @@ my %things =
                           :herephrase("Your %s is parked here.")),
     flashlight => Flashlight.new(:name<flashlight>),
     rope       => Rope.new(:name<rope>),
+    grass      => Grass.new(:name<grass>),
+    bushes     => Bushes.new(:name<bushes>),
     door       => Door.new(:name<door>),
+    trees      => Trees.new(:name<trees>),
     leaves     => Leaves.new(:name<leaves>,
                     :containphrase("69,105 %s.")),
     brook      => Brook.new(:name<brook>,
                     :herephrase("A small brook runs through the forest.")),
     water      => Water.new(:name<water>, :containphrase("Some %s.")),
-    sign       => Thing.new(:name<sign>),
+    sign       => Sign.new(:name<sign>),
     basket     => Basket.new(:name<basket>),
     "tiny disk"   => Disk.new(:name("tiny disk"),   :size(1)),
     "small disk"  => Disk.new(:name("small disk"),  :size(2)),
@@ -680,19 +714,23 @@ my %things =
     pedestal   => Pedestal.new(:name<pedestal>, :supports<butterfly>),
     butterfly  => Butterfly.new(:name<butterfly>),
     doom       => Doom.new(),
+    sarcophagi => Sarcophagi.new(:name<sarcophagi>),
+    walls      => Walls.new(:name<walls>),
 ;
 
 my %rooms =
     clearing => Room.new( :name<Clearing>, :contents<car> ),
-    hill     => Hill.new( :name<Hill>, :contents<door leaves brook water>,
+    hill     => Hill.new( :name<Hill>,
+                          :contents<door trees leaves grass bushes brook
+                                    water>,
                           :in<south> ),
-    chamber  => Chamber.new( :name(<Chamber>), :contents<sign basket>,
+    chamber  => Chamber.new( :name(<Chamber>), :contents<sign basket walls>,
                              :out<north> ),
     hall     => Hall.new( :name(<Hall>),
-                          :contents(<helmet>, map { "$_ disk" },
+                          :contents(<helmet walls>, map { "$_ disk" },
                                     <tiny small middle large huge>)),
-    cave     => Cave.new( :name(<Cave>), :contents<fire> ),
-    crypt    => Crypt.new( :name(<Crypt>), :contents<pedestal> ),
+    cave     => Cave.new( :name(<Cave>), :contents<fire walls> ),
+    crypt    => Crypt.new( :name(<Crypt>), :contents<pedestal walls> ),
 ;
 %things.push(%rooms);
 
@@ -834,7 +872,7 @@ loop {
                 $verb = $synonym;
             }
 
-            unless $verb eq any <examine open close take drop> {
+            unless $verb eq any <examine open close take drop read> {
                 say "Sorry, I don't understand the verb '$<verb>'.";
                 say "Type 'help' for suggestions.";
                 succeed;

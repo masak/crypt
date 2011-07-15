@@ -8,7 +8,8 @@ small bushes grow on the hill.
 
 == Chamber
 This is a cramped space just inside the hidden opening in the hill. The
-sun gets in enough to illuminate the place.
+sun gets in enough to illuminate the place. There are some scribblings on
+the wall.
 
 == Hall
 It's hard to believe that this kind of room can fit under a hill. It's tall,
@@ -35,3 +36,95 @@ sturdy fiber of some kind.
 == brook
 Clear water flows over and around a few fixed stones in the brook. It's
 probably from a spring higher up in the hills somewhere. It looks chilly.
+
+== car
+Small, kind of old, and beginning to rust. But it still gets you places.
+
+== grass
+It's lustrous and, you know, green.
+
+== bushes
+Those are some seriously uninteresting bushes.
+
+== door
+It'd made of stone but covered with dirt and grass on top.
+
+== trees
+Autumn trees are just so lovely. They look like they're just about to drop
+all their leaves -- red, yellow, brown ones -- to the ground.
+
+== leaves
+They look like the kind of leaves that like a good rustle.
+
+== brook
+Clear water flows over and around a few stones in the brook. It most likely
+comes from a spring higher up in the hills somewhere. It looks chilly.
+
+== sign
+It says "LEAVE " with big, scrawly lettering. Maybe a warning or a threat.
+On closer inspection, though, it looks like there might once have been one
+more letter at the end, but it has since been worn away.
+
+== basket
+It's fixed to the ground under the sign. For some reason it reminds you of
+objects used during religious ceremonies for offerings of different kinds.
+
+== tiny disk
+It's a bit heavy.
+
+== small disk
+It's very heavy.
+
+== middle disk
+It's enormously heavy.
+
+== large disk
+It's indescribably heavy.
+
+== huge disk
+It's so heavy that this description doesn't do its weight justice.
+
+== fire
+It's massive, and sort of yellow-red-orangeish. Also, it's really, really hot!
+
+== helmet
+Once surely part of a big metal uniform, now it's just the helmet. The visor,
+seems to be fixed in place. The whole headpiece look like a big pot without a
+handle. The metal is thin and light, so the helmet doesn't weigh much.
+
+== pedestal
+It's made of stone. It points up from the ground. It appears to contain a
+deadly, unreachable contraption built to discourage tomb raiders.
+
+== sarcophagi
+They're boxes containing deceased people. Better just leave them be.
+
+== butterfly
+It's made of gold, silver, enamel, diamond, ruby, emerald, and various other
+precious stones and metals you can't identify. You feel rich just looking
+at it.
+
+== walls:Chamber
+"Damian Conway was here."
+"Help, I'm stuck!"
+"This sentence no verb."
+
+== walls:Hall
+"Put the huge disk on the right rod."
+"my $question = /2b/ || !/2b/;"
+"Oh, I know, I know! It's this Hanoi thing, right?"
+"You'll never make it."
+
+== walls:Cave
+"Do not <illegible> the fire!"
+"The Eternal Fire shall not be disturbed."
+"For thousands of years our ancestors have tended to this fire."
+"If you were to put out the fire, how would you do it?"
+"Under any circumstances, DO NOT <illegible>"
+
+== walls:Crypt
+"Man, it's depressing in here."
+"I have nothing whatsoever to do."
+"Ooh, nice butterfly."
+"Please on the fire if you're the last to leave."
+"How can I get the treasure without being crushed to death?"
