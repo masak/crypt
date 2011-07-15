@@ -605,11 +605,11 @@ sub current_container_of(Str $name) {
         return $thing if $name eq any $thing.?contents;
         return $thing if $name eq any $thing.?supports;
     }
-    die "Couldn't find the current container of $name";
+    return Nil;
 }
 
 sub room_contains(Str $name) {
-    return current_container_of($name).name eq any $room.name, $room.contents;
+    return current_container_of($name).?name eq any $room.name, $room.contents;
 }
 
 sub inventory_contains(Str $name) {
