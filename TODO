@@ -1,0 +1,13 @@
+* "bathe"
+* in help: "open"/"close"
+* in Hill: "stone(s)", "forest", "ground"
+* "examine"
+* "climb hill"
+* when dropped on the ground, the leaves disappear! (They shouldn't.)
+* "turn on"
+* .lc all commands
+* "examine hieroglyph(s)" etc
+* "the tiny disk" as disambiguation
+* "put the right disk on the middle rod", similar to "CB"
+* "take small disk" triggers an error! http://pastebin.com/QbJFppfa
+* prevent player from removing all but the tiny disk
