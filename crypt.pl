@@ -761,7 +761,8 @@ loop {
     given $command {
         when !.defined || .lc eq "q" | "quit" {
             say "";
-            if "y"|"yes" eq lc prompt "Really quit (y/N)? " {
+            my $really = prompt "Really quit (y/N)? ";
+            if !defined $really || "y"|"yes" eq lc $really {
                 say "Thanks for playing.";
                 exit;
             }
