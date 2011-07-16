@@ -233,7 +233,9 @@ role Room does Thing does Container {
     method disconnect(Direction $direction) {
         my $opposite = opposite_direction($direction);
         my $other_room = self.exits.delete($direction);
-        $other_room.exits.delete($opposite);
+        if $other_room {
+            $other_room.exits.delete($opposite);
+        }
     }
 
     method list_exits {
