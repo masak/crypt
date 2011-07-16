@@ -754,7 +754,7 @@ my %synonyms =
 
 loop {
     say "";
-    my $command = prompt("> ").trim;
+    my $command = prompt("> ");
 
     given $command {
         when !.defined || .lc eq "q" | "quit" {
@@ -764,6 +764,9 @@ loop {
                 exit;
             }
         }
+
+        $command .= trim;
+        $command .= lc;
 
         when "" {
             succeed;
