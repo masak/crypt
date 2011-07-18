@@ -514,13 +514,16 @@ class Hall does Room does Darkness {
     }
 
     method on_move_disk($old_rod) {
+        sub hole_is_revealed { %rooms<hall>.exits.exists("down") }
+
         if @!disks[2] == 5 {
             say "The whole floor tips, and reveals a hole beneath the wall.";
             %rooms<hall>.connect('down', %rooms<cave>);
         }
 
         if defined $old_rod && $old_rod == 2 && @!disks[2] == 3
-           && $room.exits.exists("down") {
+           && hole_is_revealed() {
+
             say "The whole floor tips back, hiding the hole again.";
             %rooms<hall>.disconnect('down');
         }
