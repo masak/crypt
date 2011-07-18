@@ -519,7 +519,8 @@ class Hall does Room does Darkness {
             %rooms<hall>.connect('down', %rooms<cave>);
         }
 
-        if defined $old_rod && $old_rod == 2 && @!disks[2] == 3 {
+        if defined $old_rod && $old_rod == 2 && @!disks[2] == 3
+           && $room.exits.exists("down") {
             say "The whole floor tips back, hiding the hole again.";
             %rooms<hall>.disconnect('down');
         }
