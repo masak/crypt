@@ -788,6 +788,8 @@ loop {
                 "drop banana";
             say "[go] north/south/east/west (n/s/e/w) | ",
                 "put banana in bag";
+            say "open bag                             | ",
+                "close bag";
         }
 
         when /^ :s go (\w+) $/
