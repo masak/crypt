@@ -555,12 +555,17 @@ class Leaves does Thing does Implicit does Takable {
 class Flashlight does Thing does Takable {
     has Bool $.is_on = False;
 
-    method switch_on {
+    method use {
         if $.is_on {
             say "It's already switched on.";
         }
+        my $was_dark = !there_is_light;
         $!is_on = True;
         say "You switch on the flashlight.";
+        if $was_dark {
+            say "";
+            $room.look;
+        }
     }
 
     method examine {
@@ -667,8 +672,8 @@ sub player_can_see(Thing $thing) {
     my $thing_is_visible = $thing !~~ Showable || $thing.is_visible;
 
     return False unless $thing_is_visible;
-    return False unless room_contains($thing.name.lc)
-                        || inventory_contains($thing.name.lc);
+    return False unless room_contains($thing.name)
+                        || inventory_contains($thing.name);
 
     return True;
 }
@@ -747,14 +752,19 @@ my %rooms =
 %rooms<clearing>.connect('east', %rooms<hill>);
 %rooms<cave>.connect('northwest', %rooms<crypt>);
 
-my %synonyms =
-    "x"        => "examine",
-    "look"     => "examine",
-    "pick"     => "take",
-    "get"      => "take",
-    "retrieve" => "take",
-    "retreive" => "take",  # might as well
+my @base_verbs = <examine open close take drop read go use>;
+my %verb_synonyms =
+    "x"         => "examine",
+    "look"      => "examine",
+    "pick"      => "take",
+    "pick up"   => "take",
+    "get"       => "take",
+    "retrieve"  => "take",
+    "retreive"  => "take",  # might as well
+    "turn on"   => "use",
+    "switch on" => "use",
 ;
+my @verbs = @base_verbs, %verb_synonyms.keys;
 
 %rooms<clearing>.enter;
 
@@ -867,34 +877,13 @@ loop {
             }
         }
 
-        when /^ :s [turn on||switch on] $<noun>=[[flash]?light] $/ {
-            my $flashlight = %things<flashlight>;
-            unless player_can_see($flashlight) {
-                say "You see no $<noun> here.";
-                succeed;
-            }
-
-            my $was_dark = !there_is_light;
-            $flashlight.switch_on;
-            if $was_dark {
-                say "";
-                $room.look;
-            }
-        }
-
-        when /^ $<verb>=[\w+] <.ws> [the]? <.ws> $<noun>=[\w+] $/ {
+        when /^ $<verb>=@verbs <.ws> [the]? <.ws> $<noun>=[\w+] $/ {
             my $verb = $<verb>;
-            if %synonyms{$verb} -> $synonym {
+            if %verb_synonyms{$verb} -> $synonym {
                 $verb = $synonym;
             }
 
-            unless $verb eq any <examine open close take drop read go> {
-                say "Sorry, I don't understand the verb '$<verb>'.";
-                say "Type 'help' for suggestions.";
-                succeed;
-            }
-
-            my $thing = %things{$<noun>.lc};
+            my $thing = %things{$<noun>};
             unless $thing {
                 say "I am unfamiliar with the noun '$<noun>'.";
                 succeed;
@@ -916,7 +905,7 @@ loop {
         when /^ :s $<verb>=[\w+] [the]? $<noun1>=[\w+]
                 $<prep>=[in||on] [the]? $<noun2>=[\w+] $/ {
             my $verb = $<verb>;
-            if %synonyms{$verb} -> $synonym {
+            if %verb_synonyms{$verb} -> $synonym {
                 $verb = $synonym;
             }
 
@@ -938,7 +927,7 @@ loop {
                 $noun1 = "tiny disk";
             }
 
-            my $thing = %things{$noun1.lc};
+            my $thing = %things{$noun1};
             unless $thing {
                 say "I am unfamiliar with the noun '$noun1'.";
                 succeed;
@@ -948,7 +937,7 @@ loop {
                 succeed;
             }
 
-            my $receiver = %things{$<noun2>.lc};
+            my $receiver = %things{$<noun2>};
             unless $receiver {
                 say "I am unfamiliar with the noun '$<noun2>'.";
                 succeed;
@@ -1030,8 +1019,8 @@ loop {
                 succeed;
             }
 
-            my $old_rod = ord($0.lc) - ord("a");
-            my $new_rod = ord($1.lc) - ord("a");
+            my $old_rod = ord($0) - ord("a");
+            my $new_rod = ord($1) - ord("a");
             if $old_rod == $new_rod {
                 succeed;
             }
