@@ -378,6 +378,11 @@ role Readable {
 class Disk does Thing does Takable does Heavy {
 }
 
+sub inverse_index(@array, $value) {
+    my $index = (first { .value eq $value }, @array.pairs).key;
+    return $index;
+}
+
 my $used_abbreviated_syntax = False;
 class Hall does Room does Darkness {
     has @!disks =
@@ -385,8 +390,8 @@ class Hall does Room does Darkness {
         [],
         [],
     ;
-    has $!long_moves_made = 0;
-    my @sizes = <. tiny small middle large huge>;
+    has $!moves_made = 0;
+    my @sizes = <. tiny small medium large huge>;
     my @rods  = <left middle right>;
 
     method list_contents($herephrase) {
@@ -418,11 +423,6 @@ class Hall does Room does Darkness {
         }
         say $indent, "-" x 37;
         say $indent, join "  ", map { "     $_     " }, <A B C>;
-    }
-
-    sub inverse_index(@array, $value) {
-        my $index = (first { .value eq $value }, @array.pairs).key;
-        return $index;
     }
 
     method take_disk(Str $adjective) {
@@ -481,11 +481,8 @@ class Hall does Room does Darkness {
         self.show_disks;
 
         if defined $old_rod {
-            $!long_moves_made++;
-            if 3 <= $!long_moves_made < 5 && !$used_abbreviated_syntax {
-                my $abbr = chr(ord("A") + $old_rod) ~ chr(ord("A") + $new_rod);
-                say "(You can also write this move as $abbr)";
-            }
+            $!moves_made++;
+            self.suggest_short_syntax($old_rod, $new_rod);
         }
 
         self.?on_move_disk($old_rod);
@@ -515,7 +512,16 @@ class Hall does Room does Darkness {
         say "You put the $adjective disk on the $position rod.";
         self.show_disks;
 
+        $!moves_made++;
+        self.suggest_short_syntax($old_rod, $new_rod);
         self.?on_move_disk($old_rod);
+    }
+
+    method suggest_short_syntax($old_rod, $new_rod) {
+        if 3 <= $!moves_made < 5 && !$used_abbreviated_syntax {
+            my $abbr = chr(ord("A") + $old_rod) ~ chr(ord("A") + $new_rod);
+            say "(You can also write this move as $abbr)";
+        }
     }
 
     method on_move_disk($old_rod) {
@@ -726,7 +732,7 @@ my %things =
     basket     => Basket.new(:name<basket>),
     "tiny disk"   => Disk.new(:name("tiny disk"),   :size(1)),
     "small disk"  => Disk.new(:name("small disk"),  :size(2)),
-    "middle disk" => Disk.new(:name("middle disk"), :size(3)),
+    "medium disk" => Disk.new(:name("medium disk"), :size(3)),
     "large disk"  => Disk.new(:name("large disk"),  :size(4)),
     "huge disk"   => Disk.new(:name("huge disk"),   :size(5)),
     fire       => Fire.new(:name<fire>),
@@ -748,7 +754,7 @@ my %rooms =
                              :out<north> ),
     hall     => Hall.new( :name(<Hall>),
                           :contents(<helmet walls>, map { "$_ disk" },
-                                    <tiny small middle large huge>)),
+                                    <tiny small medium large huge>)),
     cave     => Cave.new( :name(<Cave>), :contents<fire walls> ),
     crypt    => Crypt.new( :name(<Crypt>), :contents<pedestal walls> ),
 ;
@@ -930,7 +936,7 @@ loop {
 
             if $<noun1> eq "disk" && $room ~~ Hall {
                 say "Which disk do you mean; the tiny disk, the small disk, ",
-                    "the middle disk,";
+                    "the medium disk,";
                 say "the large disk, or the huge disk?";
                 succeed;
             }
@@ -987,12 +993,12 @@ loop {
 
         when /^ :s [move|put|take] [the]? disk / {
             say "Which disk do you mean; the tiny disk, the small disk, ",
-                "the middle disk,";
+                "the medium disk,";
             say "the large disk, or the huge disk?";
         }
 
         when /^ :s take [the]?
-                $<adjective>=[tiny||small||middle||large||huge] disk / {
+                $<adjective>=[tiny||small||medium||large||huge] disk / {
 
             unless player_can_see(%things{"$<adjective> disk"}) {
                 say "You see no $<adjective> disk here.";
@@ -1007,7 +1013,7 @@ loop {
         }
 
         when /^ :s [move|put] [the]?
-                $<adjective>=[tiny||small||middle||large||huge]
+                $<adjective>=[tiny||small||medium||large||huge]
                 disk [on|to] [the]?
                 $<position>=[left||middle||right]
                 rod $/ {
@@ -1024,7 +1030,27 @@ loop {
             $room.move_disk_to_rod(~$<adjective>, ~$<position>);
         }
 
-        when /^ :s (<[abcABC]>)(<[abcABC]>) $/ {
+        when /^ :s [move|put] [the]?
+                $<adjective>=[left||middle||right]
+                disk [on|to] [the]?
+                $<position>=[left||middle||right]
+                rod $/ {
+
+            unless $room ~~ Hall {
+                say "You see no rod here.";
+                succeed;
+            }
+
+            my $old_rod = inverse_index <left middle right>, $<adjective>;
+            my $new_rod = inverse_index <left middle right>, $<position>;
+            if $old_rod == $new_rod {
+                succeed;
+            }
+
+            $room.move_rod_to_rod($old_rod, $new_rod);
+        }
+
+        when /^ :s (<[abc]>)(<[abc]>) $/ {
             $used_abbreviated_syntax = True;
 
             unless $room ~~ Hall {
@@ -1032,8 +1058,8 @@ loop {
                 succeed;
             }
 
-            my $old_rod = ord($0) - ord("a");
-            my $new_rod = ord($1) - ord("a");
+            my $old_rod = inverse_index <a b c>, $0;
+            my $new_rod = inverse_index <a b c>, $1;
             if $old_rod == $new_rod {
                 succeed;
             }
