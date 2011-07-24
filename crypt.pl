@@ -464,7 +464,7 @@ class Grass does Implicit {
     }
 }
 
-class Helmet does Implicit does Container does Takable {
+class Helmet does Container does Takable {
     method on_remove_from(Container $_) {
         when Brook {
             %things<water>.put(self);
@@ -676,6 +676,7 @@ class Hall does Room does Darkness {
         say "";
         for %things{@.contents} -> Thing $thing {
             next if $thing ~~ Disk;
+            next if $thing ~~ Implicit;
             if player_can_see($thing) {
                 say sprintf $thing.herephrase // $herephrase, $thing.name;
             }
