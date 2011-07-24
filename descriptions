@@ -108,25 +108,25 @@ It's made of gold, silver, enamel, diamond, ruby, emerald, and various other
 precious stones and metals you can't identify. You feel rich just looking
 at it.
 
-== walls:Chamber
+== walls:chamber
 "Damian Conway was here."
 "Help, I'm stuck!"
 "This sentence no verb."
 
-== walls:Hall
+== walls:hall
 "Put the huge disk on the right rod."
 "my $question = /2b/ || !/2b/;"
 "Oh, I know, I know! It's this Hanoi thing, right?"
 "You'll never make it."
 
-== walls:Cave
+== walls:cave
 "Do not <illegible> the fire!"
 "The Eternal Fire shall not be disturbed."
 "For thousands of years our ancestors have tended to this fire."
 "If you were to put out the fire, how would you do it?"
 "Under any circumstances, DO NOT <illegible>"
 
-== walls:Crypt
+== walls:crypt
 "Man, it's depressing in here."
 "I have nothing whatsoever to do."
 "Ooh, nice butterfly."
