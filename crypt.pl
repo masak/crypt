@@ -243,7 +243,9 @@ role Container does Thing {
     }
 
     method on_open {
-        say "Opening the $.name reveals a {join " and a ", @.contents}.";
+        if @.contents {
+            say "Opening the $.name reveals a {join " and a ", @.contents}.";
+        }
     }
 }
 
