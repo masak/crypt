@@ -1,13 +1,47 @@
-use v6;
+## Predeclarations
 
-say "CRYPT";
-say "=====";
-say "";
+role Thing     { ... }
 
-say "You've heard there's supposed to be an ancient hidden crypt in these";
-say "woods. One containing a priceless treasure. Well, there's only one way";
-say "to find out...";
-say "";
+role Container { ... }
+role Darkness  { ... }
+role Heavy     { ... }
+role Implicit  { ... }
+role Openable  { ... }
+role Platform  { ... }
+role Readable  { ... }
+role Showable  { ... }
+role Takable   { ... }
+
+class Basket     { ... }
+class Brook      { ... }
+class Bushes     { ... }
+class Butterfly  { ... }
+class Car        { ... }
+class Disk       { ... }
+class Doom       { ... }
+class Door       { ... }
+class Fire       { ... }
+class Flashlight { ... }
+class Grass      { ... }
+class Helmet     { ... }
+class Inventory  { ... }
+class Leaves     { ... }
+class Pedestal   { ... }
+class Rope       { ... }
+class Sarcophagi { ... }
+class Sign       { ... }
+class Trees      { ... }
+class Walls      { ... }
+class Water      { ... }
+
+role Room     { ... }
+
+class Cave    { ... }
+class Crypt   { ... }
+class Hall    { ... }
+class Hill    { ... }
+
+## Global variables
 
 my %descriptions;
 for slurp("descriptions").split(/\n\n/) {
@@ -16,46 +50,141 @@ for slurp("descriptions").split(/\n\n/) {
     %descriptions{$0} = ~$1;
 }
 
-my @directions = <
-    north south east west
-    northeast northwest southeast southwest
-    up down in out
->;
+my $room;
+my $inventory = Inventory.new();
+my $used_abbreviated_syntax = False;
 
-my %abbr_directions = <
-    n  north
-    s  south
-    e  east
-    w  west
-    ne northeast
-    nw northwest
-    se southeast
-    sw southwest
-    u  up
-    d  down
->;
+my %things =
+    car        => Car.new(:name<car>, :contents<flashlight rope>,
+                          :herephrase("Your %s is parked here.")),
+    flashlight => Flashlight.new(:name<flashlight>),
+    rope       => Rope.new(:name<rope>),
+    grass      => Grass.new(:name<grass>),
+    bushes     => Bushes.new(:name<bushes>),
+    door       => Door.new(:name<door>),
+    trees      => Trees.new(:name<trees>),
+    leaves     => Leaves.new(:name<leaves>,
+                    :containphrase("69,105 %s.")),
+    brook      => Brook.new(:name<brook>,
+                    :herephrase("A small brook runs through the forest.")),
+    water      => Water.new(:name<water>, :containphrase("Some %s.")),
+    sign       => Sign.new(:name<sign>),
+    basket     => Basket.new(:name<basket>),
+    "tiny disk"   => Disk.new(:name("tiny disk"),   :size(1)),
+    "small disk"  => Disk.new(:name("small disk"),  :size(2)),
+    "medium disk" => Disk.new(:name("medium disk"), :size(3)),
+    "large disk"  => Disk.new(:name("large disk"),  :size(4)),
+    "huge disk"   => Disk.new(:name("huge disk"),   :size(5)),
+    fire       => Fire.new(:name<fire>),
+    helmet     => Helmet.new(:name<helmet>),
+    pedestal   => Pedestal.new(:name<pedestal>, :supports<butterfly>),
+    butterfly  => Butterfly.new(:name<butterfly>),
+    doom       => Doom.new(),
+    sarcophagi => Sarcophagi.new(:name<sarcophagi>),
+    walls      => Walls.new(:name<walls>),
+;
 
-# RAKUDO: Have to repeat the list here because of a scoping bug [perl #95500]
-subset Direction of Str where any(<
-    north south east west
-    northeast northwest southeast southwest
-    up down in out
->);
+my %rooms =
+    clearing => Room.new( :name<clearing>, :contents<car> ),
+    hill     => Hill.new( :name<hill>,
+                          :contents<door trees leaves grass bushes brook
+                                    water>,
+                          :in<south> ),
+    chamber  => Room.new( :name(<chamber>), :contents<sign basket walls>,
+                          :out<north> ),
+    hall     => Hall.new( :name(<hall>),
+                          :contents(<helmet walls>, map { "$_ disk" },
+                                    <tiny small medium large huge>)),
+    cave     => Cave.new( :name(<cave>), :contents<fire walls> ),
+    crypt    => Crypt.new( :name(<crypt>), :contents<pedestal walls> ),
+;
+%things.push(%rooms);
 
-sub opposite_direction(Direction $d) {
-    my %opposites =
-        'north'     => 'south',
-        'east'      => 'west',
-        'northeast' => 'southwest',
-        'northwest' => 'southeast',
-        'up'        => 'down',
-        'in'        => 'out',
-    ;
+%rooms<clearing>.connect('east', %rooms<hill>);
+%rooms<cave>.connect('northwest', %rooms<crypt>);
 
-    %opposites.push( %opposites.invert );
+my @base_verbs = <examine open close take drop read go use put>;
+my %verb_synonyms =
+    "x"         => "examine",
+    "look"      => "examine",
+    "pick"      => "take",
+    "pick up"   => "take",
+    "get"       => "take",
+    "retrieve"  => "take",
+    "retreive"  => "take",  # might as well
+    "turn on"   => "use",
+    "switch on" => "use",
+;
+my @verbs = @base_verbs, %verb_synonyms.keys;
 
-    %opposites{$d};
+## Utility subroutines
+
+sub exclude(@l, $e) { grep { $_ !=== $e }, @l }
+
+sub inverse_index(@array, $value) {
+    my $index = @array.keys.first({ @array[$_] eq $value });
+    return $index;
 }
+
+sub current_container_of(Str $name) {
+    return $room      if $name eq $room.name.lc;
+    return $room      if $name eq any $room.contents;
+    return $inventory if $name eq any $inventory.contents;
+    for %things{$room.contents, $inventory.contents} -> $thing {
+        return $thing if $name eq any $thing.?contents;
+        return $thing if $name eq any $thing.?supports;
+    }
+    return Nil;
+}
+
+sub room_contains(Str $name) {
+    return current_container_of($name).?name eq any $room.name, $room.contents;
+}
+
+sub inventory_contains(Str $name) {
+    return True if $name eq any $inventory.contents;
+    return True if $name eq any map { .contents.flat },
+                                grep { player_can_see_inside($_) },
+                                %things{$inventory.contents};
+    return False;
+}
+
+sub player_can_see(Thing $thing) {
+    my $thing_is_visible = $thing !~~ Showable || $thing.is_visible;
+
+    return False unless $thing_is_visible;
+    return False unless room_contains($thing.name)
+                        || inventory_contains($thing.name);
+
+    return True;
+}
+
+sub player_can_see_inside(Thing $thing) {
+    my $thing_is_open = $thing ~~ Container
+                        && ($thing !~~ Openable || $thing.is_open);
+
+    return False unless $thing_is_open;
+    return False unless player_can_see($thing);
+
+    return True;
+}
+
+sub there_is_light() {
+    my $there_is_sun = $room !~~ Darkness;
+    return True if $there_is_sun;
+
+    my $flashlight = %things<flashlight>;
+    my $flashlight_is_here = player_can_see($flashlight);
+    return True if $flashlight_is_here && $flashlight.is_on;
+
+    my $fire = %things<fire>;
+    my $fire_is_here = player_can_see($fire);
+    return True if $fire_is_here;
+
+    return False;
+}
+
+## Roles for things and rooms
 
 role Thing {
     has Str $.name;
@@ -64,75 +193,17 @@ role Thing {
     has Str $.containphrase;
 
     method examine {
-        say $!description;
-        self.?on_examine;
-    }
-}
-
-role Showable {
-    has Bool $.is_visible = False;
-
-    method show {
-        unless $.is_visible {
-            $!is_visible = True;
-            self.?on_show;
+        if there_is_light() {
+            say $!description;
+            self.?on_examine;
+        }
+        else {
+            say "You can't see anything, because it's pitch black.";
         }
     }
 }
 
-role Implicit {
-}
-
-role Openable {
-    has Bool $.is_open;
-
-    method open {
-        if $.is_open {
-            say "The $.name is open.";
-            return;
-        }
-        say "You open the $.name.";
-        $!is_open = True;
-        self.?on_open;
-    }
-
-    method close {
-        unless $.is_open {
-            say "The $.name is closed.";
-            return;
-        }
-        say "You close the $.name.";
-        $!is_open = False;
-        self.?on_close;
-    }
-}
-
-role Platform {
-    has Thing @.supports is rw;
-
-    method add(Str $name) {
-        @.supports.push($name);
-    }
-
-    method remove(Str $name) {
-        @.supports = exclude(@.supports, $name);
-    }
-
-    method list_platform_supports($containphrase, $indent = 1) {
-        for %things{@.supports} -> Thing $thing {
-            say '  ' x $indent,
-                sprintf $thing.containphrase // $containphrase, $thing.name;
-            if player_can_see_inside($thing) && $thing.contents {
-                say '  ' x $indent, "The $thing.name() contains:";
-                $thing.list_container_contents("A %s.", $indent + 1);
-            }
-        }
-    }
-}
-
-sub exclude(@l, $e) { grep { $_ !=== $e }, @l }
-
-role Container {
+role Container does Thing {
     has Thing @.contents is rw;
 
     method add(Str $name) {
@@ -176,29 +247,177 @@ role Container {
     }
 }
 
-class Inventory does Thing does Container {
+role Darkness does Room {
 }
 
-class Car does Thing does Openable does Container {
+role Heavy does Thing {
+    method on_remove_from($_) {
+        when Platform {
+            unless grep Heavy, %things<pedestal>.supports {
+                say "An alarm starts sounding in the whole cavern.";
+                %things<doom>.activate;
+            }
+        }
+    }
+
+    method on_put($_) {
+        when Platform {
+            say "The alarm stops.";
+            %things<doom>.inactivate;
+        }
+    }
+}
+
+role Implicit does Thing {
+}
+
+role Openable does Thing {
+    has Bool $.is_open;
+
+    method open {
+        if $.is_open {
+            say "The $.name is open.";
+            return;
+        }
+        say "You open the $.name.";
+        $!is_open = True;
+        self.?on_open;
+    }
+
+    method close {
+        unless $.is_open {
+            say "The $.name is closed.";
+            return;
+        }
+        say "You close the $.name.";
+        $!is_open = False;
+        self.?on_close;
+    }
+}
+
+role Platform does Thing {
+    has Thing @.supports is rw;
+
+    method add(Str $name) {
+        @.supports.push($name);
+    }
+
+    method remove(Str $name) {
+        @.supports = exclude(@.supports, $name);
+    }
+
+    method list_platform_supports($containphrase, $indent = 1) {
+        for %things{@.supports} -> Thing $thing {
+            say '  ' x $indent,
+                sprintf $thing.containphrase // $containphrase, $thing.name;
+            if player_can_see_inside($thing) && $thing.contents {
+                say '  ' x $indent, "The $thing.name() contains:";
+                $thing.list_container_contents("A %s.", $indent + 1);
+            }
+        }
+    }
+}
+
+role Readable does Thing {
+    method read {
+        self.examine;
+    }
+}
+
+role Showable does Thing {
+    has Bool $.is_visible = False;
+
+    method show {
+        unless $.is_visible {
+            $!is_visible = True;
+            self.?on_show;
+        }
+    }
+}
+
+role Takable does Thing {
+    method put($new_receiver) {
+        my $old_receiver = current_container_of($.name);
+        $old_receiver.remove($.name);
+        self.?on_remove_from($old_receiver);
+
+        $new_receiver.add($.name);
+        self.?on_put($new_receiver);
+    }
+
+    method take {
+        if inventory_contains($.name) {
+            say "You are already holding the $.name";
+            return;
+        }
+        say "You take the $.name.";
+        self.put($inventory);
+    }
+
+    method drop {
+        unless inventory_contains($.name) {
+            say "You are not holding the $.name";
+            return;
+        }
+        say "You drop the $.name on the ground.";
+        self.put($room);
+    }
+}
+
+## Things
+
+class Basket does Container {
+}
+
+class Brook does Container {
+}
+
+class Bushes does Implicit {
+    method on_examine {
+        %things<door>.show;
+    }
+}
+
+class Butterfly does Takable does Heavy {
+}
+
+class Car does Openable does Container {
     method go {
         say "You get in the car, but then remember that you haven't found";
         say "the treasure yet, so you get out again.";
     }
 }
 
-class Grass does Thing does Implicit {
-    method on_examine {
-        %things<door>.show;
+class Disk does Takable does Heavy {
+}
+
+class Doom {
+    has Bool $.activated = False;
+    has Int $!time_left;
+
+    method activate {
+        $!activated = True;
+        $!time_left = 4;
+    }
+
+    method inactivate {
+        $!activated = False;
+    }
+
+    method tick {
+        if $!activated {
+            $!time_left--;
+            unless $!time_left {
+                say "The alarm starts sounding louder.";
+                say "The whole cavern shakes, and falls in on itself.";
+                say "You die.";
+                last;
+            }
+        }
     }
 }
 
-class Bushes does Thing does Implicit {
-    method on_examine {
-        %things<door>.show;
-    }
-}
-
-class Door does Thing does Showable does Openable {
+class Door does Showable does Openable {
     method on_show {
         say "You discover a door in the hill, under the thick grass!";
     }
@@ -213,17 +432,146 @@ class Door does Thing does Showable does Openable {
     }
 }
 
-class Brook does Thing does Container {
+class Fire does Container {
 }
 
-class Basket does Thing does Container {
+class Flashlight does Takable {
+    has Bool $.is_on = False;
+
+    method use {
+        if $.is_on {
+            say "It's already switched on.";
+        }
+        my $was_dark = !there_is_light;
+        $!is_on = True;
+        say "You switch on the flashlight.";
+        if $was_dark {
+            say "";
+            $room.look;
+        }
+    }
+
+    method examine {
+        self.Thing::examine;
+        say "";
+        say "The $.name is switched {$.is_on ?? "on" !! "off"}.";
+    }
 }
 
-role Darkness {
+class Grass does Implicit {
+    method on_examine {
+        %things<door>.show;
+    }
 }
 
-my $room;
-role Room does Thing does Container {
+class Helmet does Implicit does Container does Takable {
+    method on_remove_from(Container $_) {
+        when Brook {
+            %things<water>.put(self);
+        }
+    }
+}
+
+class Inventory does Container {
+}
+
+class Leaves does Implicit does Takable {
+    method on_put(Container $_) {
+        when Car {
+            say "Great. Now your car is full of leaves.";
+        }
+        when Basket {
+            say "The ground rumbles and shakes a bit.";
+            say "A passageway opens up to the south, into the caverns.";
+            %rooms<chamber>.connect('south', %rooms<hall>);
+        }
+        when Fire {
+            say "The leaves burn up within seconds.";
+        }
+    }
+}
+
+class Pedestal does Platform {
+}
+
+class Rope does Takable {
+}
+
+class Sarcophagi does Implicit {
+}
+
+class Sign does Readable {
+}
+
+class Trees does Implicit {
+}
+
+class Walls does Implicit does Readable {
+    method examine {
+        say %descriptions{"walls:$room.name()"}.lines.pick;
+        self.?on_examine;
+    }
+}
+
+class Water does Implicit does Takable {
+    method on_put($_) {
+        when Inventory {
+            say "Your bare hands aren't very good at carrying water.";
+            self.drop;
+        }
+        when Fire {
+            say "The fire wanes and dies.";
+            $room.remove("fire");
+        }
+    }
+}
+
+## Directions
+
+my @directions = <
+    north south east west
+    northeast northwest southeast southwest
+    up down in out
+>;
+
+my %abbr_directions = <
+    n  north
+    s  south
+    e  east
+    w  west
+    ne northeast
+    nw northwest
+    se southeast
+    sw southwest
+    u  up
+    d  down
+>;
+
+# RAKUDO: Have to repeat the list here because of a scoping bug [perl #95500]
+subset Direction of Str where any(<
+    north south east west
+    northeast northwest southeast southwest
+    up down in out
+>);
+
+sub opposite_direction(Direction $d) {
+    my %opposites =
+        'north'     => 'south',
+        'east'      => 'west',
+        'northeast' => 'southwest',
+        'northwest' => 'southeast',
+        'up'        => 'down',
+        'in'        => 'out',
+    ;
+
+    %opposites.push( %opposites.invert );
+
+    %opposites{$d};
+}
+
+## Rooms
+
+role Room does Container {
     has Direction %.exits is rw;
     has Direction $.in;
     has Direction $.out;
@@ -272,7 +620,7 @@ role Room does Thing does Container {
     }
 
     method enter {
-        say $!name;
+        say $!name.ucfirst;
         $room = self;
 
         unless $!visited {
@@ -293,13 +641,9 @@ class Hill does Room {
         if inventory_contains 'butterfly' {
             say "Congratulations! You found the treasure and got out with it ",
                 "alive!";
-            say "Thank you for playing.";
-            exit;
+            last;
         }
     }
-}
-
-class Chamber does Room {
 }
 
 class Cave does Room does Darkness {
@@ -315,75 +659,6 @@ class Cave does Room does Darkness {
 class Crypt does Room does Darkness {
 }
 
-my $inventory = Inventory.new();
-
-role Takable {
-    method put($new_receiver) {
-        my $old_receiver = current_container_of($.name);
-        $old_receiver.remove($.name);
-        self.?on_remove_from($old_receiver);
-
-        $new_receiver.add($.name);
-        self.?on_put($new_receiver);
-    }
-
-    method take {
-        if inventory_contains($.name) {
-            say "You are already holding the $.name";
-            return;
-        }
-        say "You take the $.name.";
-        self.put($inventory);
-    }
-
-    method drop {
-        unless inventory_contains($.name) {
-            say "You are not holding the $.name";
-            return;
-        }
-        say "You drop the $.name on the ground.";
-        self.put($room);
-    }
-}
-
-role Heavy {
-    method on_remove_from($_) {
-        when Platform {
-            unless grep Heavy, %things<pedestal>.supports {
-                say "An alarm starts sounding in the whole cavern.";
-                %things<doom>.activate;
-            }
-        }
-    }
-
-    method on_put($_) {
-        when Platform {
-            say "The alarm stops.";
-            %things<doom>.inactivate;
-        }
-    }
-}
-
-role Readable {
-    method read {
-        if there_is_light() {
-            self.examine;
-        }
-        else {
-            say "You would read it, if there were any light here!";
-        }
-    }
-}
-
-class Disk does Thing does Takable does Heavy {
-}
-
-sub inverse_index(@array, $value) {
-    my $index = @array.keys.first({ @array[$_] eq $value });
-    return $index;
-}
-
-my $used_abbreviated_syntax = False;
 class Hall does Room does Darkness {
     has @!disks =
         [5, 4, 3, 2, 1],
@@ -545,241 +820,16 @@ class Hall does Room does Darkness {
     }
 }
 
-class Fire does Thing does Container {
-}
+## The game itself
 
-class Trees does Thing does Implicit {
-}
+say "CRYPT";
+say "=====";
+say "";
 
-class Leaves does Thing does Implicit does Takable {
-    method on_put(Container $_) {
-        when Car {
-            say "Great. Now your car is full of leaves.";
-        }
-        when Basket {
-            say "The ground rumbles and shakes a bit.";
-            say "A passageway opens up to the south, into the caverns.";
-            %rooms<chamber>.connect('south', %rooms<hall>);
-        }
-        when Fire {
-            say "The leaves burn up within seconds.";
-        }
-    }
-}
-
-class Flashlight does Thing does Takable {
-    has Bool $.is_on = False;
-
-    method use {
-        if $.is_on {
-            say "It's already switched on.";
-        }
-        my $was_dark = !there_is_light;
-        $!is_on = True;
-        say "You switch on the flashlight.";
-        if $was_dark {
-            say "";
-            $room.look;
-        }
-    }
-
-    method examine {
-        self.Thing::examine;
-        say "";
-        say "The $.name is switched {$.is_on ?? "on" !! "off"}.";
-    }
-}
-
-class Rope does Thing does Takable {
-}
-
-class Helmet does Thing does Implicit does Container does Takable {
-    method on_remove_from(Container $_) {
-        when Brook {
-            %things<water>.put(self);
-        }
-    }
-}
-
-class Water does Thing does Implicit does Takable {
-    method on_put($_) {
-        when Inventory {
-            say "Your bare hands aren't very good at carrying water.";
-            self.drop;
-        }
-        when Fire {
-            say "The fire wanes and dies.";
-            $room.remove("fire");
-        }
-    }
-}
-
-class Pedestal does Thing does Platform {
-}
-
-class Butterfly does Thing does Takable does Heavy {
-}
-
-class Doom {
-    has Bool $.activated = False;
-    has Int $!time_left;
-
-    method activate {
-        $!activated = True;
-        $!time_left = 4;
-    }
-
-    method inactivate {
-        $!activated = False;
-    }
-
-    method tick {
-        if $!activated {
-            $!time_left--;
-            unless $!time_left {
-                say "The alarm starts sounding louder.";
-                say "The whole cavern shakes, and falls in on itself.";
-                say "You die.";
-                say "Thank you for playing.";
-                exit;
-            }
-        }
-    }
-}
-
-class Sarcophagi does Thing does Implicit {
-}
-
-class Sign does Thing does Readable {
-}
-
-class Walls does Thing does Implicit does Readable {
-    method examine {
-        say %descriptions{"walls:$room.name()"}.lines.pick;
-        self.?on_examine;
-    }
-}
-
-sub current_container_of(Str $name) {
-    return $room      if $name eq $room.name.lc;
-    return $room      if $name eq any $room.contents;
-    return $inventory if $name eq any $inventory.contents;
-    for %things{$room.contents, $inventory.contents} -> $thing {
-        return $thing if $name eq any $thing.?contents;
-        return $thing if $name eq any $thing.?supports;
-    }
-    return Nil;
-}
-
-sub room_contains(Str $name) {
-    return current_container_of($name).?name eq any $room.name, $room.contents;
-}
-
-sub inventory_contains(Str $name) {
-    return True if $name eq any $inventory.contents;
-    return True if $name eq any map { .contents.flat },
-                                grep { player_can_see_inside($_) },
-                                %things{$inventory.contents};
-    return False;
-}
-
-sub player_can_see(Thing $thing) {
-    my $thing_is_visible = $thing !~~ Showable || $thing.is_visible;
-
-    return False unless $thing_is_visible;
-    return False unless room_contains($thing.name)
-                        || inventory_contains($thing.name);
-
-    return True;
-}
-
-sub player_can_see_inside(Thing $thing) {
-    my $thing_is_open = $thing ~~ Container
-                        && ($thing !~~ Openable || $thing.is_open);
-
-    return False unless $thing_is_open;
-    return False unless player_can_see($thing);
-
-    return True;
-}
-
-sub there_is_light() {
-    my $there_is_sun = $room !~~ Darkness;
-    return True if $there_is_sun;
-
-    my $flashlight = %things<flashlight>;
-    my $flashlight_is_here = player_can_see($flashlight);
-    return True if $flashlight_is_here && $flashlight.is_on;
-
-    my $fire = %things<fire>;
-    my $fire_is_here = player_can_see($fire);
-    return True if $fire_is_here;
-
-    return False;
-}
-
-my %things =
-    car        => Car.new(:name<car>, :contents<flashlight rope>,
-                          :herephrase("Your %s is parked here.")),
-    flashlight => Flashlight.new(:name<flashlight>),
-    rope       => Rope.new(:name<rope>),
-    grass      => Grass.new(:name<grass>),
-    bushes     => Bushes.new(:name<bushes>),
-    door       => Door.new(:name<door>),
-    trees      => Trees.new(:name<trees>),
-    leaves     => Leaves.new(:name<leaves>,
-                    :containphrase("69,105 %s.")),
-    brook      => Brook.new(:name<brook>,
-                    :herephrase("A small brook runs through the forest.")),
-    water      => Water.new(:name<water>, :containphrase("Some %s.")),
-    sign       => Sign.new(:name<sign>),
-    basket     => Basket.new(:name<basket>),
-    "tiny disk"   => Disk.new(:name("tiny disk"),   :size(1)),
-    "small disk"  => Disk.new(:name("small disk"),  :size(2)),
-    "medium disk" => Disk.new(:name("medium disk"), :size(3)),
-    "large disk"  => Disk.new(:name("large disk"),  :size(4)),
-    "huge disk"   => Disk.new(:name("huge disk"),   :size(5)),
-    fire       => Fire.new(:name<fire>),
-    helmet     => Helmet.new(:name<helmet>),
-    pedestal   => Pedestal.new(:name<pedestal>, :supports<butterfly>),
-    butterfly  => Butterfly.new(:name<butterfly>),
-    doom       => Doom.new(),
-    sarcophagi => Sarcophagi.new(:name<sarcophagi>),
-    walls      => Walls.new(:name<walls>),
-;
-
-my %rooms =
-    clearing => Room.new( :name<Clearing>, :contents<car> ),
-    hill     => Hill.new( :name<Hill>,
-                          :contents<door trees leaves grass bushes brook
-                                    water>,
-                          :in<south> ),
-    chamber  => Chamber.new( :name(<Chamber>), :contents<sign basket walls>,
-                             :out<north> ),
-    hall     => Hall.new( :name(<Hall>),
-                          :contents(<helmet walls>, map { "$_ disk" },
-                                    <tiny small medium large huge>)),
-    cave     => Cave.new( :name(<Cave>), :contents<fire walls> ),
-    crypt    => Crypt.new( :name(<Crypt>), :contents<pedestal walls> ),
-;
-%things.push(%rooms);
-
-%rooms<clearing>.connect('east', %rooms<hill>);
-%rooms<cave>.connect('northwest', %rooms<crypt>);
-
-my @base_verbs = <examine open close take drop read go use put>;
-my %verb_synonyms =
-    "x"         => "examine",
-    "look"      => "examine",
-    "pick"      => "take",
-    "pick up"   => "take",
-    "get"       => "take",
-    "retrieve"  => "take",
-    "retreive"  => "take",  # might as well
-    "turn on"   => "use",
-    "switch on" => "use",
-;
-my @verbs = @base_verbs, %verb_synonyms.keys;
+say "You've heard there's supposed to be an ancient hidden crypt in these";
+say "woods. One containing a priceless treasure. Well, there's only one way";
+say "to find out...";
+say "";
 
 %rooms<clearing>.enter;
 
@@ -792,8 +842,7 @@ loop {
             say "";
             my $really = prompt "Really quit (y/N)? ";
             if !defined $really || "y"|"yes" eq lc $really {
-                say "Thanks for playing.";
-                exit;
+                last;
             }
         }
 
@@ -1081,3 +1130,5 @@ loop {
         }
     }
 }
+
+say "Thanks for playing.";
