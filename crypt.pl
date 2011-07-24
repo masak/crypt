@@ -379,7 +379,7 @@ class Disk does Thing does Takable does Heavy {
 }
 
 sub inverse_index(@array, $value) {
-    my $index = (first { .value eq $value }, @array.pairs).key;
+    my $index = @array.keys.first({ @array[$_] eq $value });
     return $index;
 }
 
