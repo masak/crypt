@@ -436,12 +436,16 @@ class Hall does Room does Darkness {
                      grep { $_ < $size }, @!disks[$old_rod].list), ".";
                 return;
             }
-            pop @!disks[$old_rod];
+        }
+        unless $adjective eq "tiny" {
+            say "The $adjective disk is too heavy to carry!";
+            return;
         }
 
         %things{"$adjective disk"}.take;
 
         if defined $old_rod {
+            pop @!disks[$old_rod];
             self.?on_move_disk($old_rod);
         }
     }
