@@ -763,7 +763,7 @@ my %rooms =
 %rooms<clearing>.connect('east', %rooms<hill>);
 %rooms<cave>.connect('northwest', %rooms<crypt>);
 
-my @base_verbs = <examine open close take drop read go use>;
+my @base_verbs = <examine open close take drop read go use put>;
 my %verb_synonyms =
     "x"         => "examine",
     "look"      => "examine",
