@@ -111,13 +111,15 @@ at it.
 == walls:chamber
 "Help, I'm stuck!"
 "This sentence no verb."
+"A hidden door. Oldest trick in the book."
 
 == walls:hall
 "Larry Wall was here."
 "Put the huge disk on the right rod."
-"my $question = /2b/ || !/2b/;"
+"$question = /2b/ || !/2b/;"
 "Oh, I know, I know! It's this Hanoi thing, right?"
 "You'll never make it."
+"The small disk on the medium disk... no wait, hold on..."
 
 == walls:cave
 "Do not <illegible> the fire!"
@@ -125,6 +127,7 @@ at it.
 "For thousands of years our ancestors have tended to this fire."
 "If you were to put out the fire, how would you do it?"
 "Under any circumstances, DO NOT <illegible>"
+"Do not believe everything you read on walls."
 
 == walls:crypt
 "Man, it's depressing in here."
@@ -132,3 +135,5 @@ at it.
 "Ooh, nice butterfly."
 "Please turn the fire back on if you're the last to leave."
 "How can I get the treasure without being crushed to death?"
+"Perl 6 rocks!"
+"Camelia, is that you?"
