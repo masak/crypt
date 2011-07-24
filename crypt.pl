@@ -35,7 +35,12 @@ my %abbr_directions = <
     d  down
 >;
 
-subset Direction of Str where any(@directions);
+# RAKUDO: Have to repeat the list here because of a scoping bug [perl #95500]
+subset Direction of Str where any(<
+    north south east west
+    northeast northwest southeast southwest
+    up down in out
+>);
 
 sub opposite_direction(Direction $d) {
     my %opposites =
@@ -828,7 +833,7 @@ loop {
             proceed;
         }
 
-        when any(@directions) {
+        when Direction {
             my $direction = $command;
             if $room.exits{$direction} -> $new_room {
                 my $succeeded = $room.?on_try_exit($direction) // True;
