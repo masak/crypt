@@ -882,7 +882,11 @@ loop {
             }
         }
 
-        when /^ $<verb>=@verbs <.ws> [the]? <.ws> $<noun>=[\w+] $/ {
+        # RAKUDO: Due to [perl #95504], we have to do the checking like
+        #         this instead of just $<verb>=@verbs
+        when /^ :s $<verb>=[\w+[ \w+]?] <?{ $<verb> eq any(@verbs) }>
+                [the]? $<noun>=[\w+] $/ {
+
             my $verb = $<verb>;
             if %verb_synonyms{$verb} -> $synonym {
                 $verb = $synonym;
@@ -907,8 +911,12 @@ loop {
             %things<doom>.tick;
         }
 
-        when /^ :s $<verb>=[\w+] [the]? $<noun1>=[\w+]
-                $<prep>=[in||on] [the]? $<noun2>=[\w+] $/ {
+        # RAKUDO: Due to [perl #95504], we have to do the checking like
+        #         this instead of just $<verb>=@verbs
+        when /^ :s $<verb>=[\w+[ \w+]?] <?{ $<verb> eq any(@verbs) }>
+                [the]? $<noun1>=[\w+] $<prep>=[in||on]
+                [the]? $<noun2>=[\w+] $/ {
+
             my $verb = $<verb>;
             if %verb_synonyms{$verb} -> $synonym {
                 $verb = $synonym;
