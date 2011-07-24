@@ -892,6 +892,10 @@ loop {
             }
         }
 
+        when /^ :s $<verb>=[\w+[ \w+]?] <?{ $<verb> eq any(@verbs) }> $/ {
+            say "What do you want to $<verb>?";
+        }
+
         # RAKUDO: Due to [perl #95504], we have to do the checking like
         #         this instead of just $<verb>=@verbs
         when /^ :s $<verb>=[\w+[ \w+]?] <?{ $<verb> eq any(@verbs) }>
