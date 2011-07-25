@@ -198,6 +198,10 @@ role Thing {
         if there_is_light() {
             say $!description;
             self.?on_examine;
+            if self !~~ Room && player_can_see_inside(self) && self.contents {
+                say "The ", self.name, " contains:";
+                self.list_container_contents("A %s");
+            }
         }
         else {
             say "You can't see anything, because it's pitch black.";
