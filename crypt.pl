@@ -436,7 +436,14 @@ class Door does Showable does Openable {
     }
 }
 
-class Fire does Container {
+class Fire does Container does Platform {
+    method add(Str $name) {
+        self.Container::add($name);
+    }
+
+    method remove(Str $name) {
+        self.Container::remove($name);
+    }
 }
 
 class Flashlight does Takable {
