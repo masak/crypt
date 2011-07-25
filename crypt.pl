@@ -525,6 +525,16 @@ class Walls does Implicit does Readable {
 }
 
 class Water does Implicit does Takable {
+    method use {
+        if player_can_see(%things<fire>) {
+            say "You put the water on the fire.";
+            self.put(%things<fire>);
+        }
+        else {
+            say "Use the $.name for what?";
+        }
+    }
+
     method on_put($_) {
         when Inventory {
             say "Your bare hands aren't very good at carrying water.";
@@ -533,6 +543,9 @@ class Water does Implicit does Takable {
         when Fire {
             say "The fire wanes and dies.";
             $room.remove("fire");
+            if !there_is_light() {
+                $room.look;
+            }
         }
     }
 }
