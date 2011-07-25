@@ -107,6 +107,8 @@ my @base_verbs = <examine open close take drop read go use put>;
 my %verb_synonyms =
     "x"         => "examine",
     "look"      => "examine",
+    "move"      => "put",
+    "place"     => "put",
     "pick"      => "take",
     "pick up"   => "take",
     "get"       => "take",
@@ -970,6 +972,11 @@ loop {
 
             unless $thing.can($verb) {
                 say "You can't $<verb> the $<noun>.";
+                succeed;
+            }
+
+            if $verb eq "put" {
+                say "You want to $<verb> the $<noun> in what or on what?";
                 succeed;
             }
 
