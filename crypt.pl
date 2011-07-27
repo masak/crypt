@@ -454,7 +454,7 @@ class Flashlight does Takable {
     has Bool $.is_on = False;
 
     method use {
-        if $.is_on {
+        if $!is_on {
             say "It's already switched on.";
         }
         my $was_dark = !there_is_light;
