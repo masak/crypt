@@ -139,15 +139,20 @@ class Hanoi::Game {
 
     method remove($disk) {
         my $size = $disk.words[0];
-        die X::Hanoi::ForbiddenDiskRemoval.new(:$disk)
-            unless $size eq 'tiny';
         my $source;
         for %!state -> ( :key($rod), :value(@disks) ) {
             if $disk eq any(@disks) {
+                sub smaller_disks {
+                    grep { %size_of{$_} < %size_of{$disk} }, @disks;
+                }
+                die X::Hanoi::CoveredDisk.new(:$disk, :covered_by(smaller_disks))
+                    unless @disks[*-1] eq $disk;
                 $source = $rod;
                 last;
             }
         }
+        die X::Hanoi::ForbiddenDiskRemoval.new(:$disk)
+            unless $size eq 'tiny';
         my @events = Hanoi::DiskRemoved.new(:$size, :$source);
         self!apply($_) for @events;
         return @events;
@@ -347,6 +352,16 @@ multi MAIN('test', 'hanoi') {
                 is .message,
                    'Removing the small disk is forbidden',
                    '.message attribute';
+            };
+
+        throws_exception
+            { $game.remove('medium disk') },
+            X::Hanoi::CoveredDisk,
+            'removing a disk (-) the disk is covered',
+            {
+                is .disk, 'medium disk', '.disk attribute';
+                is .covered_by, ['small disk'],
+                    '.covered_by attribute';
             };
     }
 
