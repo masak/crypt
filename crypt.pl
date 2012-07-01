@@ -25,6 +25,15 @@ class X::Hanoi::LargerOnSmaller is Exception {
     }
 }
 
+class X::Hanoi::NoSuchRod is Exception {
+    has $.rod;
+    has $.name;
+
+    method message($_:) {
+        "No such {.rod} rod '{.name}'"
+    }
+}
+
 class HanoiGame {
     my @names = map { "$_ disk" }, <tiny small medium big huge>;
     my %size_of = @names Z 1..5;
@@ -36,6 +45,10 @@ class HanoiGame {
     ;
 
     method move($from, $to) {
+        die X::Hanoi::NoSuchRod.new(:rod<source>, :name($from))
+            unless %!state.exists($from);
+        die X::Hanoi::NoSuchRod.new(:rod<target>, :name($to))
+            unless %!state.exists($to);
         my @from_rod := %!state{$from};
         my @to_rod   := %!state{$to};
         my $moved_disk = @from_rod[*-1];
@@ -93,6 +106,28 @@ multi MAIN('test', 'hanoi') {
             is .smaller, 'tiny disk', '.smaller attribute';
             is .message,
                'Cannot put the small disk on the tiny disk',
+               '.message attribute';
+        };
+
+    throws_exception
+        { $game.move('gargle', 'middle') },
+        X::Hanoi::NoSuchRod,
+        {
+            is .rod, 'source', '.rod attribute';
+            is .name, 'gargle', '.name attribute';
+            is .message,
+               q[No such source rod 'gargle'],
+               '.message attribute';
+        };
+
+    throws_exception
+        { $game.move('middle', 'clown') },
+        X::Hanoi::NoSuchRod,
+        {
+            is .rod, 'target', '.rod attribute';
+            is .name, 'clown', '.name attribute';
+            is .message,
+               q[No such target rod 'clown'],
                '.message attribute';
         };
 
