@@ -60,12 +60,24 @@ class HanoiGame {
 
     has $!achievement = 'locked';
 
-    method move($source, $target) {
-        die X::Hanoi::NoSuchRod.new(:rod<source>, :name($source))
-            unless %!state.exists($source);
+    method move($source is copy, $target) {
+        my @source_rod;
+        if $source eq any @disks {
+            for %!state -> ( :key($rod), :value(@disks) ) {
+                if $source eq any(@disks) {
+                    @source_rod := @disks;
+                    $source = $rod;
+                    last;
+                }
+            }
+        }
+        else {
+            die X::Hanoi::NoSuchRod.new(:rod<source>, :name($source))
+                unless %!state.exists($source);
+            @source_rod := %!state{$source};
+        }
         die X::Hanoi::NoSuchRod.new(:rod<target>, :name($target))
             unless %!state.exists($target);
-        my @source_rod := %!state{$source};
         die X::Hanoi::RodHasNoDisks.new(:name($source))
             unless @source_rod;
         my @target_rod := %!state{$target};
@@ -224,6 +236,14 @@ multi MAIN('test', 'hanoi') {
                 AchievementLocked.new(),
             ), 'removing two disks from the right rod locks achievement';
         }
+    }
+
+    {
+        my $game = HanoiGame.new();
+
+        is $game.move('tiny disk', my $target = 'middle'),
+           DiskMoved.new(:size<tiny>, :source<left>, :$target),
+           'naming source disk instead of the rod (+)';
     }
 
     done;
