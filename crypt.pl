@@ -98,31 +98,14 @@ class Hanoi::Game {
     has $!achievement = 'locked';
 
     method move($source is copy, $target) {
-        my @source_rod;
         if $source eq any @disks {
-            my $disk = $source;
-            for %!state -> ( :key($rod), :value(@disks) ) {
-                if $disk eq any(@disks) {
-                    sub smaller_disks {
-                        grep { %size_of{$_} < %size_of{$disk} }, @disks;
-                    }
-                    die X::Hanoi::CoveredDisk.new(:$disk, :covered_by(smaller_disks))
-                        unless @disks[*-1] eq $disk;
-                    @source_rod := @disks;
-                    $source = $rod;
-                    last;
-                }
-            }
-            die X::Hanoi::DiskHasBeenRemoved.new(:action<move>, :$disk)
-                unless @source_rod;
+            $source = self!rod_with_disk($source, 'move');
         }
-        else {
-            die X::Hanoi::NoSuchRod.new(:rod<source>, :name($source))
-                unless %!state.exists($source);
-            @source_rod := %!state{$source};
-        }
+        die X::Hanoi::NoSuchRod.new(:rod<source>, :name($source))
+            unless %!state.exists($source);
         die X::Hanoi::NoSuchRod.new(:rod<target>, :name($target))
             unless %!state.exists($target);
+        my @source_rod := %!state{$source};
         die X::Hanoi::RodHasNoDisks.new(:name($source))
             unless @source_rod;
         my @target_rod := %!state{$target};
@@ -151,26 +134,29 @@ class Hanoi::Game {
     }
 
     method remove($disk) {
+        my $source = self!rod_with_disk($disk, 'remove');
         my $size = $disk.words[0];
-        my $source;
-        for %!state -> ( :key($rod), :value(@disks) ) {
+        die X::Hanoi::ForbiddenDiskRemoval.new(:$disk)
+            unless $size eq 'tiny';
+        my @events = Hanoi::DiskRemoved.new(:$size, :$source);
+        self!apply($_) for @events;
+        return @events;
+    }
+
+    # The method will throw X::Hanoi::CoveredDisk if the disk is not topmost,
+    # or X::Hanoi::DiskHasBeenRemoved if the disk isn't found on any rod.
+    method !rod_with_disk($disk, $action) {
+        for %!state -> (:key($rod), :value(@disks)) {
             if $disk eq any(@disks) {
                 sub smaller_disks {
                     grep { %size_of{$_} < %size_of{$disk} }, @disks;
                 }
                 die X::Hanoi::CoveredDisk.new(:$disk, :covered_by(smaller_disks))
                     unless @disks[*-1] eq $disk;
-                $source = $rod;
-                last;
+                return $rod;
             }
         }
-        die X::Hanoi::DiskHasBeenRemoved.new(:action<remove>, :$disk)
-            unless defined $source;
-        die X::Hanoi::ForbiddenDiskRemoval.new(:$disk)
-            unless $size eq 'tiny';
-        my @events = Hanoi::DiskRemoved.new(:$size, :$source);
-        self!apply($_) for @events;
-        return @events;
+        die X::Hanoi::DiskHasBeenRemoved.new(:$disk, :$action);
     }
 
     # RAKUDO: private multimethods NYI
