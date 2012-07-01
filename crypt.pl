@@ -11,7 +11,7 @@ role Event {
 }
 
 class Hanoi::DiskMoved does Event {
-    has $.size;
+    has $.disk;
     has $.source;
     has $.target;
 }
@@ -23,12 +23,12 @@ class Hanoi::AchievementLocked does Event {
 }
 
 class Hanoi::DiskRemoved does Event {
-    has $.size;
+    has $.disk;
     has $.source;
 }
 
 class Hanoi::DiskAdded does Event {
-    has $.size;
+    has $.disk;
     has $.target;
 }
 
@@ -140,14 +140,14 @@ class Hanoi::Game {
                 );
             }
         }
-        my $size = $moved_disk.words[0];
-        my @events = Hanoi::DiskMoved.new(:$size, :$source, :$target);
+        my @events
+            = Hanoi::DiskMoved.new(:disk($moved_disk), :$source, :$target);
         if %!state<right> == @disks-1
            && $target eq 'right'
            && $!achievement eq 'locked' {
             @events.push(Hanoi::AchievementUnlocked.new);
         }
-        if $size eq 'small' && $!achievement eq 'unlocked' {
+        if $moved_disk eq 'small disk' && $!achievement eq 'unlocked' {
             @events.push(Hanoi::AchievementLocked.new);
         }
         self!apply($_) for @events;
@@ -156,10 +156,9 @@ class Hanoi::Game {
 
     method remove($disk) {
         my $source = self!rod_with_disk($disk, 'remove');
-        my $size = $disk.words[0];
         die X::Hanoi::ForbiddenDiskRemoval.new(:$disk)
-            unless $size eq 'tiny';
-        my @events = Hanoi::DiskRemoved.new(:$size, :$source);
+            unless $disk eq 'tiny disk';
+        my @events = Hanoi::DiskRemoved.new(:$disk, :$source);
         self!apply($_) for @events;
         return @events;
     }
@@ -169,8 +168,7 @@ class Hanoi::Game {
             unless $disk eq any(@disks);
         die X::Hanoi::DiskAlreadyOnARod.new(:$disk)
             if grep { $disk eq any(@$_) }, %!state.values;
-        my $size = $disk.words[0];
-        my @events = Hanoi::DiskAdded.new(:$size, :$target);
+        my @events = Hanoi::DiskAdded.new(:$disk, :$target);
         self!apply($_) for @events;
         return @events;
     }
@@ -210,7 +208,7 @@ class Hanoi::Game {
         }
         when Hanoi::DiskAdded {
             my @target_rod := %!state{.target};
-            @target_rod.push("{.size} disk");
+            @target_rod.push(.disk);
         }
     }
 }
@@ -243,7 +241,11 @@ multi MAIN('test', 'hanoi') {
         my $game = Hanoi::Game.new();
 
         is $game.move('left', 'middle'),
-           Hanoi::DiskMoved.new(:size<tiny>, :source<left>, :target<middle>),
+           Hanoi::DiskMoved.new(
+                :disk('tiny disk'),
+                :source<left>,
+                :target<middle>
+           ),
            'moving a disk (+)';
 
         throws_exception
@@ -328,20 +330,20 @@ multi MAIN('test', 'hanoi') {
         {
             my ($source, $, $target) = @last_move;
             is $game.move($source, $target), (
-                Hanoi::DiskMoved.new(:size<tiny>, :$source, :$target),
+                Hanoi::DiskMoved.new(:disk('tiny disk'), :$source, :$target),
                 Hanoi::AchievementUnlocked.new(),
             ), 'putting all disks on the right rod unlocks achievement';
 
             $game.move($target, $source);
             is $game.move($source, $target), (
-                Hanoi::DiskMoved.new(:size<tiny>, :$source, :$target),
+                Hanoi::DiskMoved.new(:disk('tiny disk'), :$source, :$target),
             ), 'moving things back and forth does not unlock achievement again';
         }
 
         {
             $game.move('right', 'middle');
             is $game.move(my $source = 'right', my $target = 'left'), (
-                Hanoi::DiskMoved.new(:size<small>, :$source, :$target),
+                Hanoi::DiskMoved.new(:disk('small disk'), :$source, :$target),
                 Hanoi::AchievementLocked.new(),
             ), 'removing two disks from the right rod locks achievement';
         }
@@ -351,7 +353,7 @@ multi MAIN('test', 'hanoi') {
         my $game = Hanoi::Game.new();
 
         is $game.move('tiny disk', my $target = 'middle'),
-           Hanoi::DiskMoved.new(:size<tiny>, :source<left>, :$target),
+           Hanoi::DiskMoved.new(:disk('tiny disk'), :source<left>, :$target),
            'naming source disk instead of the rod (+)';
     }
 
@@ -391,7 +393,7 @@ multi MAIN('test', 'hanoi') {
         my $game = Hanoi::Game.new();
 
         is $game.remove('tiny disk'),
-           Hanoi::DiskRemoved.new(:size<tiny>, :source<left>),
+           Hanoi::DiskRemoved.new(:disk('tiny disk'), :source<left>),
            'removing a disk (+)';
 
         throws_exception
@@ -455,7 +457,7 @@ multi MAIN('test', 'hanoi') {
             };
 
         is $game.add('tiny disk', 'left'),
-           Hanoi::DiskAdded.new(:size<tiny>, :target<left>),
+           Hanoi::DiskAdded.new(:disk('tiny disk'), :target<left>),
            'adding a disk (+)';
 
         throws_exception
