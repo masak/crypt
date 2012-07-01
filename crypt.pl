@@ -166,6 +166,8 @@ class Hanoi::Game {
     method add($disk, $target) {
         die X::Hanoi::NoSuchDisk.new(:$disk)
             unless $disk eq any(@disks);
+        die X::Hanoi::NoSuchRod.new(:rod<target>, :name($target))
+            unless %!state.exists($target);
         die X::Hanoi::DiskAlreadyOnARod.new(:$disk)
             if grep { $disk eq any(@$_) }, %!state.values;
         my @events = Hanoi::DiskAdded.new(:$disk, :$target);
@@ -454,6 +456,15 @@ multi MAIN('test', 'hanoi') {
                 is .message,
                     'Cannot move the tiny disk because it has been removed',
                     '.message attribute';
+            };
+
+        throws_exception
+            { $game.add('tiny disk', 'pineapple') },
+            X::Hanoi::NoSuchRod,
+            'moving a disk (-) the rod does not exist',
+            {
+                is .rod, 'target', '.rod attribute';
+                is .name, 'pineapple', '.name attribute';
             };
 
         is $game.add('tiny disk', 'left'),
