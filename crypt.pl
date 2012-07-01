@@ -34,6 +34,14 @@ class X::Hanoi::NoSuchRod is Exception {
     }
 }
 
+class X::Hanoi::RodHasNoDisks is Exception {
+    has $.name;
+
+    method message($_:) {
+        "Cannot move from the {.name} rod because there is no disk there"
+    }
+}
+
 class HanoiGame {
     my @names = map { "$_ disk" }, <tiny small medium big huge>;
     my %size_of = @names Z 1..5;
@@ -50,6 +58,8 @@ class HanoiGame {
         die X::Hanoi::NoSuchRod.new(:rod<target>, :name($to))
             unless %!state.exists($to);
         my @from_rod := %!state{$from};
+        die X::Hanoi::RodHasNoDisks.new(:name($from))
+            unless @from_rod;
         my @to_rod   := %!state{$to};
         my $moved_disk = @from_rod[*-1];
         if @to_rod {
@@ -128,6 +138,16 @@ multi MAIN('test', 'hanoi') {
             is .name, 'clown', '.name attribute';
             is .message,
                q[No such target rod 'clown'],
+               '.message attribute';
+        };
+
+    throws_exception
+        { $game.move('right', 'middle') },
+        X::Hanoi::RodHasNoDisks,
+        {
+            is .name, 'right', '.name attribute';
+            is .message,
+               q[Cannot move from the right rod because there is no disk there],
                '.message attribute';
         };
 
