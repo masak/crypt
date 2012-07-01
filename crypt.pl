@@ -22,6 +22,11 @@ class Hanoi::AchievementUnlocked does Event {
 class Hanoi::AchievementLocked does Event {
 }
 
+class Hanoi::DiskRemoved does Event {
+    has $.size;
+    has $.source;
+}
+
 class X::Hanoi::LargerOnSmaller is Exception {
     has $.larger;
     has $.smaller;
@@ -124,6 +129,20 @@ class Hanoi::Game {
         return @events;
     }
 
+    method remove($disk) {
+        my $size = $disk.words[0];
+        my $source;
+        for %!state -> ( :key($rod), :value(@disks) ) {
+            if $disk eq any(@disks) {
+                $source = $rod;
+                last;
+            }
+        }
+        my @events = Hanoi::DiskRemoved.new(:$size, :$source);
+        self!apply($_) for @events;
+        return @events;
+    }
+
     # RAKUDO: private multimethods NYI
     method !apply(Event $_) {
         when Hanoi::DiskMoved {
@@ -136,6 +155,10 @@ class Hanoi::Game {
         }
         when Hanoi::AchievementLocked {
             $!achievement = 'locked';
+        }
+        when Hanoi::DiskRemoved {
+            my @source_rod := %!state{.source};
+            @source_rod.pop;
         }
     }
 }
@@ -296,6 +319,14 @@ multi MAIN('test', 'hanoi') {
                    ~ 'the medium disk, the small disk, and the tiny disk',
                    '.message attribute';
             };
+    }
+
+    {
+        my $game = Hanoi::Game.new();
+
+        is $game.remove('tiny disk'),
+           Hanoi::DiskRemoved.new(:size<tiny>, :source<left>),
+           'removing a disk (+)';
     }
 
     done;
