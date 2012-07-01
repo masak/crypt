@@ -98,6 +98,14 @@ class X::Hanoi::NoSuchDisk is Exception {
     }
 }
 
+class X::Hanoi::DiskAlreadyOnARod is Exception {
+    has $.disk;
+
+    method message($_:) {
+        "Cannot add the {.disk} because it is already on a rod"
+    }
+}
+
 class Hanoi::Game {
     my @disks = map { "$_ disk" }, <tiny small medium large huge>;
     my %size_of = @disks Z 1..5;
@@ -159,6 +167,8 @@ class Hanoi::Game {
     method add($disk, $target) {
         die X::Hanoi::NoSuchDisk.new(:$disk)
             unless $disk eq any(@disks);
+        die X::Hanoi::DiskAlreadyOnARod.new(:$disk)
+            if grep { $disk eq any(@$_) }, %!state.values;
         my $size = $disk.words[0];
         my @events = Hanoi::DiskAdded.new(:$size, :$target);
         self!apply($_) for @events;
@@ -197,6 +207,10 @@ class Hanoi::Game {
         when Hanoi::DiskRemoved {
             my @source_rod := %!state{.source};
             @source_rod.pop;
+        }
+        when Hanoi::DiskAdded {
+            my @target_rod := %!state{.target};
+            @target_rod.push("{.size} disk");
         }
     }
 }
@@ -452,6 +466,17 @@ multi MAIN('test', 'hanoi') {
                 is .disk, 'humongous disk', '.disk attribute';
                 is .message,
                     'Cannot add a humongous disk because there is no such disk',
+                    '.message attribute';
+            };
+
+        throws_exception
+            { $game.add('tiny disk', 'right') },
+            X::Hanoi::DiskAlreadyOnARod,
+            'adding a disk (-) the disk is already on a rod',
+            {
+                is .disk, 'tiny disk', '.disk attribute';
+                is .message,
+                    'Cannot add the tiny disk because it is already on a rod',
                     '.message attribute';
             };
     }
