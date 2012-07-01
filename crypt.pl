@@ -363,6 +363,15 @@ multi MAIN('test', 'hanoi') {
                 is .covered_by, ['small disk'],
                     '.covered_by attribute';
             };
+
+        $game.move('small disk', 'middle');
+        throws_exception
+            { $game.remove('medium disk') },
+            X::Hanoi::ForbiddenDiskRemoval,
+            'removing a disk (-) uncovered, removal is still forbidden',
+            {
+                is .disk, 'medium disk', '.disk attribute';
+            };
     }
 
     done;
