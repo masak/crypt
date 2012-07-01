@@ -12,8 +12,11 @@ role Event {
 
 class DiskMoved does Event {
     has $.size;
-    has $.from;
-    has $.to;
+    has $.source;
+    has $.target;
+}
+
+class AchievementUnlocked does Event {
 }
 
 class X::Hanoi::LargerOnSmaller is Exception {
@@ -43,27 +46,27 @@ class X::Hanoi::RodHasNoDisks is Exception {
 }
 
 class HanoiGame {
-    my @names = map { "$_ disk" }, <tiny small medium big huge>;
-    my %size_of = @names Z 1..5;
+    my @disks = map { "$_ disk" }, <tiny small medium big huge>;
+    my %size_of = @disks Z 1..5;
 
     has %!state =
-        left   => [reverse @names],
+        left   => [reverse @disks],
         middle => [],
         right  => [],
     ;
 
-    method move($from, $to) {
-        die X::Hanoi::NoSuchRod.new(:rod<source>, :name($from))
-            unless %!state.exists($from);
-        die X::Hanoi::NoSuchRod.new(:rod<target>, :name($to))
-            unless %!state.exists($to);
-        my @from_rod := %!state{$from};
-        die X::Hanoi::RodHasNoDisks.new(:name($from))
-            unless @from_rod;
-        my @to_rod   := %!state{$to};
-        my $moved_disk = @from_rod[*-1];
-        if @to_rod {
-            my $covered_disk = @to_rod[*-1];
+    method move($source, $target) {
+        die X::Hanoi::NoSuchRod.new(:rod<source>, :name($source))
+            unless %!state.exists($source);
+        die X::Hanoi::NoSuchRod.new(:rod<target>, :name($target))
+            unless %!state.exists($target);
+        my @source_rod := %!state{$source};
+        die X::Hanoi::RodHasNoDisks.new(:name($source))
+            unless @source_rod;
+        my @target_rod := %!state{$target};
+        my $moved_disk = @source_rod[*-1];
+        if @target_rod {
+            my $covered_disk = @target_rod[*-1];
             if %size_of{$moved_disk} > %size_of{$covered_disk} {
                 die X::Hanoi::LargerOnSmaller.new(
                     :larger($moved_disk),
@@ -71,9 +74,13 @@ class HanoiGame {
                 );
             }
         }
-        @to_rod.push( @from_rod.pop );
+        @target_rod.push( @source_rod.pop );
         my $size = $moved_disk.words[0];
-        DiskMoved.new(:$size, :$from, :$to);
+        my @events = DiskMoved.new(:$size, :$source, :$target);
+        if %!state<right> == @disks {
+            @events.push(AchievementUnlocked.new);
+        }
+        return @events;
     }
 }
 
@@ -102,54 +109,96 @@ sub throws_exception(&code, $ex_type, &followup?) {
 }
 
 multi MAIN('test', 'hanoi') {
-    my $game = HanoiGame.new();
+    {
+        my $game = HanoiGame.new();
 
-    is $game.move('left', 'middle'),
-       DiskMoved.new(:size<tiny>, :from<left>, :to<middle>),
-       'legal move (+)';
+        is $game.move('left', 'middle'),
+           DiskMoved.new(:size<tiny>, :source<left>, :target<middle>),
+           'legal move (+)';
 
-    throws_exception
-        { $game.move('left', 'middle') },
-        X::Hanoi::LargerOnSmaller,
+        throws_exception
+            { $game.move('left', 'middle') },
+            X::Hanoi::LargerOnSmaller,
+            {
+                is .larger, 'small disk', '.larger attribute';
+                is .smaller, 'tiny disk', '.smaller attribute';
+                is .message,
+                   'Cannot put the small disk on the tiny disk',
+                   '.message attribute';
+            };
+
+        throws_exception
+            { $game.move('gargle', 'middle') },
+            X::Hanoi::NoSuchRod,
+            {
+                is .rod, 'source', '.rod attribute';
+                is .name, 'gargle', '.name attribute';
+                is .message,
+                   q[No such source rod 'gargle'],
+                   '.message attribute';
+            };
+
+        throws_exception
+            { $game.move('middle', 'clown') },
+            X::Hanoi::NoSuchRod,
+            {
+                is .rod, 'target', '.rod attribute';
+                is .name, 'clown', '.name attribute';
+                is .message,
+                   q[No such target rod 'clown'],
+                   '.message attribute';
+            };
+
+        throws_exception
+            { $game.move('right', 'middle') },
+            X::Hanoi::RodHasNoDisks,
+            {
+                is .name, 'right', '.name attribute';
+                is .message,
+                   q[Cannot move from the right rod because there is no disk there],
+                   '.message attribute';
+            };
+    }
+
+    {
+        my $game = HanoiGame.new();
+
+        multi hanoi_moves($source, $, $target, 1) {
+            # A single disk, easy; just move it directly.
+            $source, 'to', $target
+        }
+        multi hanoi_moves($source, $helper, $target, $n) {
+            # $n-1 disks on to; move them off to the $helper rod first...
+            hanoi_moves($source, $target, $helper, $n-1),
+            # ...then move over the freed disk at the bottom...
+            hanoi_moves($source, $helper, $target, 1),
+            # ...and finally move the rest from $helper to $target.
+            hanoi_moves($helper, $source, $target, $n-1)
+        }
+
+        # Let's play out the thing to the end. 32 moves.
+        my @moves = hanoi_moves("left", "middle", "right", 5);
+        # RAKUDO: .splice doesn't do WhateverCode yet: wanted *-3
+        my @last_move = @moves.splice(@moves.end-2);
+
+        lives_ok {
+            for @moves -> $source, $, $target {
+                my ($event, @rest) = $game.move($source, $target);
+                die "Unexpected event type: {$event.name}"
+                    unless $event ~~ DiskMoved;
+                die "Unexpected extra events: @rest"
+                    if @rest;
+            }
+        }, 'making all the moves to the end of the game works';
+
         {
-            is .larger, 'small disk', '.larger attribute';
-            is .smaller, 'tiny disk', '.smaller attribute';
-            is .message,
-               'Cannot put the small disk on the tiny disk',
-               '.message attribute';
-        };
-
-    throws_exception
-        { $game.move('gargle', 'middle') },
-        X::Hanoi::NoSuchRod,
-        {
-            is .rod, 'source', '.rod attribute';
-            is .name, 'gargle', '.name attribute';
-            is .message,
-               q[No such source rod 'gargle'],
-               '.message attribute';
-        };
-
-    throws_exception
-        { $game.move('middle', 'clown') },
-        X::Hanoi::NoSuchRod,
-        {
-            is .rod, 'target', '.rod attribute';
-            is .name, 'clown', '.name attribute';
-            is .message,
-               q[No such target rod 'clown'],
-               '.message attribute';
-        };
-
-    throws_exception
-        { $game.move('right', 'middle') },
-        X::Hanoi::RodHasNoDisks,
-        {
-            is .name, 'right', '.name attribute';
-            is .message,
-               q[Cannot move from the right rod because there is no disk there],
-               '.message attribute';
-        };
+            my ($source, $, $target) = @last_move;
+            is $game.move($source, $target), (
+                DiskMoved.new(:size<tiny>, :$source, :$target),
+                AchievementUnlocked.new(),
+            ), 'putting all disks on the right rod unlocks achievement';
+        }
+    }
 
     done;
 }
