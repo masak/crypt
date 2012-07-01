@@ -61,7 +61,9 @@ class X::Hanoi::CoveredDisk is Exception {
         sub last_and(@things) {
             map { "{'and ' if $_ == @things.end}@things[$_]" }, ^@things
         }
-        my $disklist = join ', ', last_and map { "the $_" }, @.covered_by;
+        my $disklist = @.covered_by > 1
+            ?? join ', ', last_and map { "the $_" }, @.covered_by
+            !! "the @.covered_by[0]";
         "Cannot move the {.disk}: it is covered by $disklist"
     }
 }
@@ -332,6 +334,20 @@ multi MAIN('test', 'hanoi') {
                 is .message,
                    'Cannot move the large disk: it is covered by '
                    ~ 'the medium disk, the small disk, and the tiny disk',
+                   '.message attribute';
+            };
+    }
+
+    {
+        my $game = Hanoi::Game.new();
+
+        throws_exception
+            { $game.move('small disk', 'right') },
+            X::Hanoi::CoveredDisk,
+            'naming source disk instead of the rod (-) no and for one-item lists',
+            {
+                is .message,
+                   'Cannot move the small disk: it is covered by the tiny disk',
                    '.message attribute';
             };
     }
