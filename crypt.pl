@@ -48,8 +48,21 @@ class X::Hanoi::RodHasNoDisks is Exception {
     }
 }
 
+class X::Hanoi::CoveredDisk is Exception {
+    has $.disk;
+    has @.covered_by;
+
+    method message($_:) {
+        sub last_and(@things) {
+            map { "{'and ' if $_ == @things.end}@things[$_]" }, ^@things
+        }
+        my $disklist = join ', ', last_and map { "the $_" }, @.covered_by;
+        "Cannot move the {.disk}: it is covered by $disklist"
+    }
+}
+
 class Hanoi::Game {
-    my @disks = map { "$_ disk" }, <tiny small medium big huge>;
+    my @disks = map { "$_ disk" }, <tiny small medium large huge>;
     my %size_of = @disks Z 1..5;
 
     has %!state =
@@ -63,8 +76,14 @@ class Hanoi::Game {
     method move($source is copy, $target) {
         my @source_rod;
         if $source eq any @disks {
+            my $disk = $source;
             for %!state -> ( :key($rod), :value(@disks) ) {
-                if $source eq any(@disks) {
+                if $disk eq any(@disks) {
+                    sub smaller_disks {
+                        grep { %size_of{$_} < %size_of{$disk} }, @disks;
+                    }
+                    die X::Hanoi::CoveredDisk.new(:$disk, :covered_by(smaller_disks))
+                        unless @disks[*-1] eq $disk;
                     @source_rod := @disks;
                     $source = $rod;
                     last;
@@ -259,6 +278,24 @@ multi MAIN('test', 'hanoi') {
         is $game.move('tiny disk', my $target = 'middle'),
            Hanoi::DiskMoved.new(:size<tiny>, :source<left>, :$target),
            'naming source disk instead of the rod (+)';
+    }
+
+    {
+        my $game = Hanoi::Game.new();
+
+        throws_exception
+            { $game.move('large disk', 'right') },
+            X::Hanoi::CoveredDisk,
+            'naming source disk instead of the rod (-)',
+            {
+                is .disk, 'large disk', '.disk attribute';
+                is .covered_by, ['medium disk', 'small disk', 'tiny disk'],
+                    '.covered_by attribute';
+                is .message,
+                   'Cannot move the large disk: it is covered by '
+                   ~ 'the medium disk, the small disk, and the tiny disk',
+                   '.message attribute';
+            };
     }
 
     done;
