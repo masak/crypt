@@ -113,6 +113,8 @@ class Hanoi::Game {
                     last;
                 }
             }
+            die X::Hanoi::DiskHasBeenRemoved.new(:action<move>, :$disk)
+                unless @source_rod;
         }
         else {
             die X::Hanoi::NoSuchRod.new(:rod<source>, :name($source))
@@ -220,12 +222,12 @@ multi MAIN('test', 'hanoi') {
 
         is $game.move('left', 'middle'),
            Hanoi::DiskMoved.new(:size<tiny>, :source<left>, :target<middle>),
-           'legal move (+)';
+           'moving a disk (+)';
 
         throws_exception
             { $game.move('left', 'middle') },
             X::Hanoi::LargerOnSmaller,
-            'legal move (-) larger disk on smaller',
+            'moving a disk (-) larger disk on smaller',
             {
                 is .larger, 'small disk', '.larger attribute';
                 is .smaller, 'tiny disk', '.smaller attribute';
@@ -237,7 +239,7 @@ multi MAIN('test', 'hanoi') {
         throws_exception
             { $game.move('gargle', 'middle') },
             X::Hanoi::NoSuchRod,
-            'legal move (-) no such source rod',
+            'moving a disk (-) no such source rod',
             {
                 is .rod, 'source', '.rod attribute';
                 is .name, 'gargle', '.name attribute';
@@ -249,7 +251,7 @@ multi MAIN('test', 'hanoi') {
         throws_exception
             { $game.move('middle', 'clown') },
             X::Hanoi::NoSuchRod,
-            'legal move (-) no such target rod',
+            'moving a disk (-) no such target rod',
             {
                 is .rod, 'target', '.rod attribute';
                 is .name, 'clown', '.name attribute';
@@ -261,7 +263,7 @@ multi MAIN('test', 'hanoi') {
         throws_exception
             { $game.move('right', 'middle') },
             X::Hanoi::RodHasNoDisks,
-            'legal move (-) rod has no disks',
+            'moving a disk (-) rod has no disks',
             {
                 is .name, 'right', '.name attribute';
                 is .message,
@@ -416,6 +418,18 @@ multi MAIN('test', 'hanoi') {
                 is .message,
                    'Cannot remove the tiny disk because it has been removed',
                    '.message attribute';
+            };
+
+        throws_exception
+            { $game.move('tiny disk', 'middle') },
+            X::Hanoi::DiskHasBeenRemoved,
+            'moving a disk (-) the disk had already been removed',
+            {
+                is .disk, 'tiny disk', '.disk attribute';
+                is .action, 'move', '.action attribute';
+                is .message,
+                    'Cannot move the tiny disk because it has been removed',
+                    '.message attribute';
             };
     }
 
