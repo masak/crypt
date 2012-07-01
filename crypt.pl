@@ -76,6 +76,15 @@ class X::Hanoi::ForbiddenDiskRemoval is Exception {
     }
 }
 
+class X::Hanoi::DiskHasBeenRemoved is Exception {
+    has $.disk;
+    has $.action;
+
+    method message($_:) {
+        "Cannot {.action} the {.disk} because it has been removed"
+    }
+}
+
 class Hanoi::Game {
     my @disks = map { "$_ disk" }, <tiny small medium large huge>;
     my %size_of = @disks Z 1..5;
@@ -153,6 +162,8 @@ class Hanoi::Game {
                 last;
             }
         }
+        die X::Hanoi::DiskHasBeenRemoved.new(:action<remove>, :$disk)
+            unless defined $source;
         die X::Hanoi::ForbiddenDiskRemoval.new(:$disk)
             unless $size eq 'tiny';
         my @events = Hanoi::DiskRemoved.new(:$size, :$source);
@@ -387,6 +398,24 @@ multi MAIN('test', 'hanoi') {
             'removing a disk (-) uncovered, removal is still forbidden',
             {
                 is .disk, 'medium disk', '.disk attribute';
+            };
+    }
+
+    {
+        my $game = Hanoi::Game.new();
+
+        $game.remove('tiny disk');
+
+        throws_exception
+            { $game.remove('tiny disk') },
+            X::Hanoi::DiskHasBeenRemoved,
+            'removing a disk (-) the disk had already been removed',
+            {
+                is .disk, 'tiny disk', '.disk attribute';
+                is .action, 'remove', '.action attribute';
+                is .message,
+                   'Cannot remove the tiny disk because it has been removed',
+                   '.message attribute';
             };
     }
 
