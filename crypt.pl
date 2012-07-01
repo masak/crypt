@@ -66,6 +66,14 @@ class X::Hanoi::CoveredDisk is Exception {
     }
 }
 
+class X::Hanoi::ForbiddenDiskRemoval is Exception {
+    has $.disk;
+
+    method message($_:) {
+        "Removing the {.disk} is forbidden"
+    }
+}
+
 class Hanoi::Game {
     my @disks = map { "$_ disk" }, <tiny small medium large huge>;
     my %size_of = @disks Z 1..5;
@@ -131,6 +139,8 @@ class Hanoi::Game {
 
     method remove($disk) {
         my $size = $disk.words[0];
+        die X::Hanoi::ForbiddenDiskRemoval.new(:$disk)
+            unless $size eq 'tiny';
         my $source;
         for %!state -> ( :key($rod), :value(@disks) ) {
             if $disk eq any(@disks) {
@@ -327,6 +337,17 @@ multi MAIN('test', 'hanoi') {
         is $game.remove('tiny disk'),
            Hanoi::DiskRemoved.new(:size<tiny>, :source<left>),
            'removing a disk (+)';
+
+        throws_exception
+            { $game.remove('small disk') },
+            X::Hanoi::ForbiddenDiskRemoval,
+            'removing a disk (-) removing disk is forbidden',
+            {
+                is .disk, 'small disk', '.disk attribute';
+                is .message,
+                   'Removing the small disk is forbidden',
+                   '.message attribute';
+            };
     }
 
     done;
