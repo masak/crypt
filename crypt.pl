@@ -94,8 +94,7 @@ class HanoiGame {
     }
 }
 
-sub throws_exception(&code, $ex_type, &followup?) {
-    my $message = 'code dies as expected';
+sub throws_exception(&code, $ex_type, $message, &followup?) {
     &code();
     ok 0, $message;
     if &followup {
@@ -129,6 +128,7 @@ multi MAIN('test', 'hanoi') {
         throws_exception
             { $game.move('left', 'middle') },
             X::Hanoi::LargerOnSmaller,
+            'legal move (-) larger disk on smaller',
             {
                 is .larger, 'small disk', '.larger attribute';
                 is .smaller, 'tiny disk', '.smaller attribute';
@@ -140,6 +140,7 @@ multi MAIN('test', 'hanoi') {
         throws_exception
             { $game.move('gargle', 'middle') },
             X::Hanoi::NoSuchRod,
+            'legal move (-) no such source rod',
             {
                 is .rod, 'source', '.rod attribute';
                 is .name, 'gargle', '.name attribute';
@@ -151,6 +152,7 @@ multi MAIN('test', 'hanoi') {
         throws_exception
             { $game.move('middle', 'clown') },
             X::Hanoi::NoSuchRod,
+            'legal move (-) no such target rod',
             {
                 is .rod, 'target', '.rod attribute';
                 is .name, 'clown', '.name attribute';
@@ -162,6 +164,7 @@ multi MAIN('test', 'hanoi') {
         throws_exception
             { $game.move('right', 'middle') },
             X::Hanoi::RodHasNoDisks,
+            'legal move (-) rod has no disks',
             {
                 is .name, 'right', '.name attribute';
                 is .message,
