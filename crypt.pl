@@ -90,6 +90,14 @@ class X::Hanoi::DiskHasBeenRemoved is Exception {
     }
 }
 
+class X::Hanoi::NoSuchDisk is Exception {
+    has $.disk;
+
+    method message($_:) {
+        "Cannot add a {.disk} because there is no such disk"
+    }
+}
+
 class Hanoi::Game {
     my @disks = map { "$_ disk" }, <tiny small medium large huge>;
     my %size_of = @disks Z 1..5;
@@ -149,6 +157,8 @@ class Hanoi::Game {
     }
 
     method add($disk, $target) {
+        die X::Hanoi::NoSuchDisk.new(:$disk)
+            unless $disk eq any(@disks);
         my $size = $disk.words[0];
         my @events = Hanoi::DiskAdded.new(:$size, :$target);
         self!apply($_) for @events;
@@ -433,6 +443,17 @@ multi MAIN('test', 'hanoi') {
         is $game.add('tiny disk', 'left'),
            Hanoi::DiskAdded.new(:size<tiny>, :target<left>),
            'adding a disk (+)';
+
+        throws_exception
+            { $game.add('humongous disk', 'middle') },
+            X::Hanoi::NoSuchDisk,
+            'adding a disk (-) there is no such disk',
+            {
+                is .disk, 'humongous disk', '.disk attribute';
+                is .message,
+                    'Cannot add a humongous disk because there is no such disk',
+                    '.message attribute';
+            };
     }
 
     done;
