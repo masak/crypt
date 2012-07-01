@@ -27,6 +27,11 @@ class Hanoi::DiskRemoved does Event {
     has $.source;
 }
 
+class Hanoi::DiskAdded does Event {
+    has $.size;
+    has $.target;
+}
+
 class X::Hanoi::LargerOnSmaller is Exception {
     has $.larger;
     has $.smaller;
@@ -139,6 +144,13 @@ class Hanoi::Game {
         die X::Hanoi::ForbiddenDiskRemoval.new(:$disk)
             unless $size eq 'tiny';
         my @events = Hanoi::DiskRemoved.new(:$size, :$source);
+        self!apply($_) for @events;
+        return @events;
+    }
+
+    method add($disk, $target) {
+        my $size = $disk.words[0];
+        my @events = Hanoi::DiskAdded.new(:$size, :$target);
         self!apply($_) for @events;
         return @events;
     }
@@ -417,6 +429,10 @@ multi MAIN('test', 'hanoi') {
                     'Cannot move the tiny disk because it has been removed',
                     '.message attribute';
             };
+
+        is $game.add('tiny disk', 'left'),
+           Hanoi::DiskAdded.new(:size<tiny>, :target<left>),
+           'adding a disk (+)';
     }
 
     done;
