@@ -55,6 +55,8 @@ class HanoiGame {
         right  => [],
     ;
 
+    has $!achievement = 'locked';
+
     method move($source, $target) {
         die X::Hanoi::NoSuchRod.new(:rod<source>, :name($source))
             unless %!state.exists($source);
@@ -77,7 +79,8 @@ class HanoiGame {
         @target_rod.push( @source_rod.pop );
         my $size = $moved_disk.words[0];
         my @events = DiskMoved.new(:$size, :$source, :$target);
-        if %!state<right> == @disks {
+        if %!state<right> == @disks && $!achievement eq 'locked' {
+            $!achievement = 'unlocked';
             @events.push(AchievementUnlocked.new);
         }
         return @events;
@@ -197,6 +200,11 @@ multi MAIN('test', 'hanoi') {
                 DiskMoved.new(:size<tiny>, :$source, :$target),
                 AchievementUnlocked.new(),
             ), 'putting all disks on the right rod unlocks achievement';
+
+            $game.move($target, $source);
+            is $game.move($source, $target), (
+                DiskMoved.new(:size<tiny>, :$source, :$target),
+            ), 'moving things back and forth does not unlock achievement again';
         }
     }
 
