@@ -91,18 +91,33 @@ class HanoiGame {
                 );
             }
         }
-        @target_rod.push( @source_rod.pop );
         my $size = $moved_disk.words[0];
         my @events = DiskMoved.new(:$size, :$source, :$target);
-        if %!state<right> == @disks && $!achievement eq 'locked' {
-            $!achievement = 'unlocked';
+        if %!state<right> == @disks-1
+           && $target eq 'right'
+           && $!achievement eq 'locked' {
             @events.push(AchievementUnlocked.new);
         }
         if $size eq 'small' && $!achievement eq 'unlocked' {
-            $!achievement = 'locked';
             @events.push(AchievementLocked.new);
         }
+        self!apply($_) for @events;
         return @events;
+    }
+
+    # RAKUDO: private multimethods NYI
+    method !apply(Event $_) {
+        when DiskMoved {
+            my @source_rod := %!state{.source};
+            my @target_rod := %!state{.target};
+            @target_rod.push( @source_rod.pop );
+        }
+        when AchievementUnlocked {
+            $!achievement = 'unlocked';
+        }
+        when AchievementLocked {
+            $!achievement = 'locked';
+        }
     }
 }
 
