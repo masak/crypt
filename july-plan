@@ -1,12 +1,12 @@
-2012-07-01: the hanoi game, with tests
-2012-07-02: testing the adventure game, looking around
-2012-07-03: moving around I (compass directions)
-2012-07-04: moving around II (up/down, in/out)
-2012-07-05: room descriptions (look)
-2012-07-06: more testing; restoring and saving
-2012-07-07: blocked exits
-2012-07-08: things
-2012-07-09: descriptions
+2012-07-01: describing the hanoi subgame; methods/events/exceptions
+2012-07-02: implementing the hanoi subgame
+2012-07-03: testing the adventure game, looking around
+2012-07-04: moving around I (compass directions)
+2012-07-05: moving around II (up/down, in/out)
+2012-07-06: room descriptions (look)
+2012-07-07: more testing; restoring and saving
+2012-07-08: blocked exits
+2012-07-09: things and descriptions
 2012-07-10: things which can be opened
 2012-07-11: things which contain other things
 2012-07-12: platform things
