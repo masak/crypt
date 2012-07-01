@@ -1,0 +1,31 @@
+2012-07-01: the hanoi game, with tests
+2012-07-02: testing the adventure game, looking around
+2012-07-03: moving around I (compass directions)
+2012-07-04: moving around II (up/down, in/out)
+2012-07-05: room descriptions (look)
+2012-07-06: more testing; restoring and saving
+2012-07-07: blocked exits
+2012-07-08: things
+2012-07-09: descriptions
+2012-07-10: things which can be opened
+2012-07-11: things which contain other things
+2012-07-12: platform things
+2012-07-13: things which you can read
+2012-07-14: hidden things which can be revealed
+2012-07-15: things which can be carried around
+2012-07-16: things which are part of the scenery
+2012-07-17: getting things from the car (car, rope, flashlight)
+2012-07-18: finding the door in the grass (grass, bushes, door)
+2012-07-19: filling your car with leaves (trees, leaves)
+2012-07-20: putting the leaves in the basket (sign, basket, walls)
+2012-07-21: it's too dark in here! (can't see, turn on the flashlight)
+2012-07-22: playing the hanoi game (walls, all the disks)
+2012-07-23: being blocked by the fire (fire, walls)
+2012-07-24: fetching water (brook, water, helmet)
+2012-07-25: putting out the fire
+2012-07-26: doom and cavern collapse
+2012-07-27: triggering doom and dying (pedestal, butterfly, walls)
+2012-07-28: moving around III (movement synonyms)
+2012-07-29: verb synonyms
+2012-07-30: tying up various loose ends
+2012-07-31: the finished game
