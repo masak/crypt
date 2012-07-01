@@ -19,6 +19,9 @@ class DiskMoved does Event {
 class AchievementUnlocked does Event {
 }
 
+class AchievementLocked does Event {
+}
+
 class X::Hanoi::LargerOnSmaller is Exception {
     has $.larger;
     has $.smaller;
@@ -82,6 +85,10 @@ class HanoiGame {
         if %!state<right> == @disks && $!achievement eq 'locked' {
             $!achievement = 'unlocked';
             @events.push(AchievementUnlocked.new);
+        }
+        if $size eq 'small' && $!achievement eq 'unlocked' {
+            $!achievement = 'locked';
+            @events.push(AchievementLocked.new);
         }
         return @events;
     }
@@ -205,6 +212,14 @@ multi MAIN('test', 'hanoi') {
             is $game.move($source, $target), (
                 DiskMoved.new(:size<tiny>, :$source, :$target),
             ), 'moving things back and forth does not unlock achievement again';
+        }
+
+        {
+            $game.move('right', 'middle');
+            is $game.move(my $source = 'right', my $target = 'left'), (
+                DiskMoved.new(:size<small>, :$source, :$target),
+                AchievementLocked.new(),
+            ), 'removing two disks from the right rod locks achievement';
         }
     }
 
