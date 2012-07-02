@@ -161,6 +161,8 @@ class Hanoi::Game {
     }
 
     method remove($disk) {
+        die X::Hanoi::NoSuchDisk.new(:action<remove>, :$disk)
+            unless $disk eq any(@disks);
         my $source = self!rod_with_disk($disk, 'remove');
         die X::Hanoi::ForbiddenDiskRemoval.new(:$disk)
             unless $disk eq 'tiny disk';
@@ -594,6 +596,23 @@ multi MAIN('test', 'hanoi') {
                     'Cannot add the tiny disk because it is already on a rod',
                     '.message attribute';
             };
+    }
+
+    {
+        my $game = Hanoi::Game.new();
+
+        throws_exception
+            { $game.remove('masakian disk') },
+            X::Hanoi::NoSuchDisk,
+            'removing a disk (-) the disk does not exist',
+            {
+                is .action, 'remove', '.action attribute';
+                is .disk, 'masakian disk', '.disk attribute';
+                is .message,
+                   'Cannot remove a masakian disk because there is no such disk',
+                   '.message attribute';
+            };
+
     }
 
     done;
