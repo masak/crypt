@@ -319,7 +319,7 @@ multi MAIN('hanoi') {
                     when Hanoi::AchievementLocked { say "Achievement locked!" }
                 }
                 CATCH {
-                    when X::Hanoi { say .message }
+                    when X::Hanoi { say .message, '.' }
                 }
             }
 
