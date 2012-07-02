@@ -243,6 +243,101 @@ sub throws_exception(&code, $ex_type, $message, &followup?) {
     }
 }
 
+multi MAIN('hanoi') {
+    my Hanoi::Game $game .= new;
+    my @disks = <tiny small medium large huge> X~ ' disk';
+    my @rods = <left middle right>;
+
+    sub params($method) {
+        $method.signature.params
+            ==> grep { .positional && !.invocant }
+            ==> map { .name.substr(1) }
+    }
+    my %commands = map { $^m.name => params($m) }, $game.^methods;
+    my @all_events;
+
+    sub print_board() {
+        my %s =
+            left   => [reverse @disks],
+            middle => [],
+            right  => [],
+        ;
+        for @all_events {
+            when Hanoi::DiskMoved   { %s{.target}.push: %s{.source}.pop }
+            when Hanoi::DiskRemoved { %s{.source}.pop }
+            when Hanoi::DiskAdded   { %s{.target}.push: .disk }
+        }
+
+        say "";
+        for reverse ^6 -> $line {
+            my %disks =
+                'none'        => '     |     ',
+                'tiny disk'   => '     =     ',
+                'small disk'  => '    ===    ',
+                'medium disk' => '   =====   ',
+                'large disk'  => '  =======  ',
+                'huge disk'   => ' ========= ',
+            ;
+
+            sub disk($rod) {
+                my $disk = %s{$rod}[$line] // 'none';
+                %disks{ $disk };
+            }
+
+            say join '  ', map &disk, @rods;
+        }
+        say join '--', '-----------' xx @rods;
+        say "";
+    }
+
+    print_board();
+    loop {
+        my $command = prompt('> ');
+        unless defined $command {
+            say "";
+            last;
+        }
+        given lc $command {
+            when 'q' | 'quit' { last }
+            when 'h' | 'help' {
+                say "Available commands:";
+                for %commands.sort {
+                    say "  {.key} {map { "<$_>" }, .value.list}";
+                }
+                say "";
+                say "Disks: ", join ', ', @disks;
+                say "Rods: ", join ', ', @rods;
+            }
+
+            sub munge   { $^s.subst(/' disk'»/, '_disk', :g) }
+            sub unmunge { $^s.subst(/'_disk'»/, ' disk', :g) }
+            $command .= &munge;
+            my $verb = $command.words[0].&unmunge;
+            my @args = $command.words[1..*]».&unmunge;
+            when %commands.exists($verb) {
+                my @req_args = %commands{$verb}.list;
+                when @args != @req_args {
+                    say "You passed in {+@args} arguments, but $verb requires {+@req_args}.";
+                    say "The arguments are {map { "<$_>" }, @req_args}.";
+                    say "'help' for more help.";
+                }
+                my @events = $game."$verb"(|@args);
+                push @all_events, @events;
+                print_board();
+                CATCH {
+                    when X::Hanoi { say .message }
+                }
+            }
+
+            default {
+                say "Sorry, the game doesn't recognize that command. :/";
+                say "'help' if you're confused as well.";
+            }
+        }
+        say "";
+    }
+}
+
 multi MAIN('test', 'hanoi') {
     {
         my $game = Hanoi::Game.new();
