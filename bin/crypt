@@ -311,9 +311,8 @@ multi MAIN('hanoi') {
 
             sub munge   { $^s.subst(/' disk'»/, '_disk', :g) }
             sub unmunge { $^s.subst(/'_disk'»/, ' disk', :g) }
-            $command .= &munge;
-            my $verb = $command.words[0].&unmunge;
-            my @args = $command.words[1..*]».&unmunge;
+            my $verb = .&munge.words[0].&unmunge;
+            my @args = .&munge.words[1..*]».&unmunge;
             when %commands.exists($verb) {
                 my @req_args = %commands{$verb}.list;
                 when @args != @req_args {
