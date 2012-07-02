@@ -32,7 +32,10 @@ class Hanoi::DiskAdded does Event {
     has $.target;
 }
 
-class X::Hanoi::LargerOnSmaller is Exception {
+class X::Hanoi is Exception {
+}
+
+class X::Hanoi::LargerOnSmaller is X::Hanoi {
     has $.larger;
     has $.smaller;
 
@@ -41,7 +44,7 @@ class X::Hanoi::LargerOnSmaller is Exception {
     }
 }
 
-class X::Hanoi::NoSuchRod is Exception {
+class X::Hanoi::NoSuchRod is X::Hanoi {
     has $.rod;
     has $.name;
 
@@ -50,7 +53,7 @@ class X::Hanoi::NoSuchRod is Exception {
     }
 }
 
-class X::Hanoi::RodHasNoDisks is Exception {
+class X::Hanoi::RodHasNoDisks is X::Hanoi {
     has $.name;
 
     method message($_:) {
@@ -58,7 +61,7 @@ class X::Hanoi::RodHasNoDisks is Exception {
     }
 }
 
-class X::Hanoi::CoveredDisk is Exception {
+class X::Hanoi::CoveredDisk is X::Hanoi {
     has $.disk;
     has @.covered_by;
 
@@ -73,7 +76,7 @@ class X::Hanoi::CoveredDisk is Exception {
     }
 }
 
-class X::Hanoi::ForbiddenDiskRemoval is Exception {
+class X::Hanoi::ForbiddenDiskRemoval is X::Hanoi {
     has $.disk;
 
     method message($_:) {
@@ -81,7 +84,7 @@ class X::Hanoi::ForbiddenDiskRemoval is Exception {
     }
 }
 
-class X::Hanoi::DiskHasBeenRemoved is Exception {
+class X::Hanoi::DiskHasBeenRemoved is X::Hanoi {
     has $.disk;
     has $.action;
 
@@ -90,7 +93,7 @@ class X::Hanoi::DiskHasBeenRemoved is Exception {
     }
 }
 
-class X::Hanoi::NoSuchDisk is Exception {
+class X::Hanoi::NoSuchDisk is X::Hanoi {
     has $.disk;
 
     method message($_:) {
@@ -98,7 +101,7 @@ class X::Hanoi::NoSuchDisk is Exception {
     }
 }
 
-class X::Hanoi::DiskAlreadyOnARod is Exception {
+class X::Hanoi::DiskAlreadyOnARod is X::Hanoi {
     has $.disk;
 
     method message($_:) {
