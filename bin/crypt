@@ -97,9 +97,10 @@ class X::Hanoi::DiskHasBeenRemoved is X::Hanoi {
 
 class X::Hanoi::NoSuchDisk is X::Hanoi {
     has $.disk;
+    has $.action;
 
     method message($_:) {
-        "Cannot add a {.disk} because there is no such disk"
+        "Cannot {.action} a {.disk} because there is no such disk"
     }
 }
 
@@ -169,7 +170,7 @@ class Hanoi::Game {
     }
 
     method add($disk, $target) {
-        die X::Hanoi::NoSuchDisk.new(:$disk)
+        die X::Hanoi::NoSuchDisk.new(:action<add>, :$disk)
             unless $disk eq any(@disks);
         die X::Hanoi::NoSuchRod.new(:rod<target>, :name($target))
             unless %!state.exists($target);
@@ -576,6 +577,7 @@ multi MAIN('test', 'hanoi') {
             X::Hanoi::NoSuchDisk,
             'adding a disk (-) there is no such disk',
             {
+                is .action, 'add', '.action attribute';
                 is .disk, 'humongous disk', '.disk attribute';
                 is .message,
                     'Cannot add a humongous disk because there is no such disk',
