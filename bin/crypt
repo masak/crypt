@@ -330,6 +330,10 @@ multi MAIN('hanoi') {
                 my @events = $game."$verb"(|@args);
                 push @all_events, @events;
                 print_board();
+                for @events {
+                    when Hanoi::AchievementUnlocked { say "Achievement unlocked!" }
+                    when Hanoi::AchievementLocked { say "Achievement locked!" }
+                }
                 CATCH {
                     when X::Hanoi { say .message }
                 }
