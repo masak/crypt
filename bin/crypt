@@ -308,6 +308,7 @@ multi MAIN('hanoi') {
                 say "Disks: ", join ', ', @disks;
                 say "Rods: ", join ', ', @rods;
             }
+            when 's' | 'show' { print_board() }
 
             sub munge   { $^s.subst(/' disk'»/, '_disk', :g) }
             sub unmunge { $^s.subst(/'_disk'»/, ' disk', :g) }
