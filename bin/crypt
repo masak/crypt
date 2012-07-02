@@ -179,6 +179,11 @@ class Hanoi::Game {
         die X::Hanoi::DiskAlreadyOnARod.new(:$disk)
             if grep { $disk eq any(@$_) }, %!state.values;
         my @events = Hanoi::DiskAdded.new(:$disk, :$target);
+        if %!state<right> == @disks-1
+           && $target eq 'right'
+           && $!achievement eq 'locked' {
+            @events.push(Hanoi::AchievementUnlocked.new);
+        }
         self!apply($_) for @events;
         return @events;
     }
@@ -460,6 +465,15 @@ multi MAIN('test', 'hanoi') {
                 Hanoi::DiskMoved.new(:disk('small disk'), :$source, :$target),
                 Hanoi::AchievementLocked.new(),
             ), 'removing two disks from the right rod locks achievement';
+        }
+
+        {
+            $game.move('left', 'right');
+            $game.remove('tiny disk');
+            is $game.add(my $disk = 'tiny disk', my $target = 'right'), (
+                Hanoi::DiskAdded.new(:$disk, :$target),
+                Hanoi::AchievementUnlocked.new(),
+            ), 'you can also unlock achievement by adding the disk';
         }
     }
 
