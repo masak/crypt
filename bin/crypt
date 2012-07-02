@@ -280,6 +280,8 @@ multi MAIN('hanoi') {
         given lc $command {
             when 'q' | 'quit' { last }
             when 'h' | 'help' {
+                say "Goal: get all the disks to the right rod.";
+                say "You can never place a larger disk on a smaller one.";
                 say "Available commands:";
                 for %commands.sort {
                     say "  {.key} {map { "<$_>" }, .value.list}";
