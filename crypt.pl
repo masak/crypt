@@ -110,7 +110,7 @@ class X::Hanoi::DiskAlreadyOnARod is X::Hanoi {
 }
 
 class Hanoi::Game {
-    my @disks = map { "$_ disk" }, <tiny small medium large huge>;
+    my @disks = <tiny small medium large huge> X~ ' disk';
     my %size_of = @disks Z 1..5;
 
     has %!state =
