@@ -272,10 +272,10 @@ multi MAIN('hanoi') {
             say join '  ', map &disk, @rods;
         }
         say join '--', '-----------' xx @rods;
-        say "";
     }
 
     print_board();
+    say "";
     loop {
         my $command = prompt('> ');
         unless defined $command {
