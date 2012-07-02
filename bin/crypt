@@ -307,6 +307,9 @@ multi MAIN('hanoi') {
                 for %commands.sort {
                     say "  {.key} {map { "<$_>" }, .value.list}";
                 }
+                say "  q[uit]";
+                say "  h[elp]";
+                say "  s[how]";
                 say "";
                 say "Disks: ", join ', ', @disks;
                 say "Rods: ", join ', ', @rods;
