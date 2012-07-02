@@ -1,3 +1,5 @@
+#! /usr/local/bin/nom
+
 use Test;
 
 role Event {
