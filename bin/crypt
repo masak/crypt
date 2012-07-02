@@ -223,29 +223,6 @@ class Hanoi::Game {
     }
 }
 
-sub throws_exception(&code, $ex_type, $message, &followup?) {
-    &code();
-    ok 0, $message;
-    if &followup {
-        diag 'Not running followup because an exception was not triggered';
-    }
-    CATCH {
-        default {
-            ok 1, $message;
-            my $type_ok = $_.WHAT === $ex_type;
-            ok $type_ok , "right exception type ({$ex_type.^name})";
-            if $type_ok {
-                &followup($_);
-            } else {
-                diag "Got:      {$_.WHAT.gist}\n"
-                    ~"Expected: {$ex_type.gist}";
-                diag "Exception message: $_.message()";
-                diag 'Not running followup because type check failed';
-            }
-        }
-    }
-}
-
 multi MAIN('hanoi') {
     my Hanoi::Game $game .= new;
     my @disks = <tiny small medium large huge> X~ ' disk';
@@ -345,6 +322,29 @@ multi MAIN('hanoi') {
             }
         }
         say "";
+    }
+}
+
+sub throws_exception(&code, $ex_type, $message, &followup?) {
+    &code();
+    ok 0, $message;
+    if &followup {
+        diag 'Not running followup because an exception was not triggered';
+    }
+    CATCH {
+        default {
+            ok 1, $message;
+            my $type_ok = $_.WHAT === $ex_type;
+            ok $type_ok , "right exception type ({$ex_type.^name})";
+            if $type_ok {
+                &followup($_);
+            } else {
+                diag "Got:      {$_.WHAT.gist}\n"
+                    ~"Expected: {$ex_type.gist}";
+                diag "Exception message: $_.message()";
+                diag 'Not running followup because type check failed';
+            }
+        }
     }
 }
 
