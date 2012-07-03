@@ -228,6 +228,17 @@ class Hanoi::Game {
     }
 }
 
+class Crypt::PlayerLooked does Event {
+    has $.target;
+    has $.description_of;
+}
+
+class Crypt::Game {
+    method look() {
+        Crypt::PlayerLooked.new(:target<room>, :description_of<clearing>);
+    }
+}
+
 multi MAIN() {
     say "CRYPT";
     say "=====";
@@ -378,6 +389,19 @@ sub throws_exception(&code, $ex_type, $message, &followup?) {
                 diag 'Not running followup because type check failed';
             }
         }
+    }
+}
+
+multi MAIN('test') {
+    {
+        my $game = Crypt::Game.new();
+
+        is $game.look(),
+            Crypt::PlayerLooked.new(
+                :target('room'),
+                :description_of<clearing>,
+            ),
+            'looking at the room';
     }
 }
 
