@@ -251,7 +251,7 @@ multi MAIN() {
 
     my $game = Crypt::Game.new();
     my %descriptions;
-    for slurp("game-data/descriptions").split(/\n\n/) {
+    for slurp("game-data/descriptions").trim.split(/\n\n/) {
         /^^ '== ' (\N+) \n (.*)/
             or die "Could not parse 'descriptions' file: $_";
         %descriptions{$0} = ~$1;
