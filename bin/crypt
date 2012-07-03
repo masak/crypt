@@ -249,12 +249,26 @@ multi MAIN() {
     say "to find out...";
     say "";
 
+    my $game = Crypt::Game.new();
+
     loop {
         my $command = prompt('> ');
         given $command {
             when !.defined || .lc eq "q" | "quit" {
                 say "";
                 last;
+            }
+
+            $command .= lc;
+            $command .= trim;
+
+            when 'look' {
+                my @events = $game.look();
+                for @events {
+                    when Crypt::PlayerLooked {
+                        say "<{.description_of}>";
+                    }
+                }
             }
 
             default {
