@@ -228,6 +228,32 @@ class Hanoi::Game {
     }
 }
 
+multi MAIN() {
+    say "CRYPT";
+    say "=====";
+    say "";
+
+    say "You've heard there's supposed to be an ancient hidden crypt in these";
+    say "woods. One containing a priceless treasure. Well, there's only one way";
+    say "to find out...";
+    say "";
+
+    loop {
+        my $command = prompt('> ');
+        given $command {
+            when !.defined || .lc eq "q" | "quit" {
+                say "";
+                last;
+            }
+
+            default {
+                say "Sorry, I did not understand that.";
+            }
+        }
+        say "";
+    }
+}
+
 multi MAIN('hanoi') {
     my Hanoi::Game $game .= new;
     my @disks = <tiny small medium large huge> X~ ' disk';
