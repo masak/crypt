@@ -228,6 +228,17 @@ class Hanoi::Game {
     }
 }
 
+class Adventure::TwoRoomsConnected does Event {
+    has @.rooms;
+    has $.direction;
+}
+
+class Adventure::Engine {
+    method connect(@rooms, $direction) {
+        Adventure::TwoRoomsConnected.new(:@rooms, :$direction);
+    }
+}
+
 class Crypt::PlayerLooked does Event {
     has $.target;
     has $.description_of;
@@ -422,6 +433,18 @@ multi MAIN('test') {
                 :description_of<clearing>,
             ),
             'looking at the room';
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        my @rooms = <kitchen veranda>;
+        is $engine.connect(@rooms, my $direction = 'south'),
+            Adventure::TwoRoomsConnected.new(
+                :@rooms,
+                :$direction,
+            ),
+            'connecting two rooms';
     }
 }
 
