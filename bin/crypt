@@ -233,8 +233,28 @@ class Adventure::TwoRoomsConnected does Event {
     has $.direction;
 }
 
+class X::Adventure is Exception {
+}
+
+class X::Adventure::NoSuchDirection is X::Adventure {
+    has $.action;
+    has $.direction;
+
+    method message($_:) {
+        qq[Cannot {.action}: direction "{.direction}" does not exist]
+    }
+}
+
 class Adventure::Engine {
+    my @possible_directions = <
+        north south east west
+        northeast northwest southeast southwest
+    >;
+
     method connect(@rooms, $direction) {
+        die X::Adventure::NoSuchDirection.new(:action('connect rooms'), :$direction)
+            unless $direction eq any(@possible_directions);
+
         Adventure::TwoRoomsConnected.new(:@rooms, :$direction);
     }
 }
@@ -444,7 +464,24 @@ multi MAIN('test') {
                 :@rooms,
                 :$direction,
             ),
-            'connecting two rooms';
+            'connecting two rooms (+)';
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        my $direction = 'oops';
+        throws_exception
+            { $engine.connect(<boat lawn>, $direction) },
+            X::Adventure::NoSuchDirection,
+            'connecting two rooms (-) no such direction',
+            {
+                is .action, 'connect rooms', '.action attribute';
+                is .direction, $direction, '.direction attribute';
+                is .message,
+                    'Cannot connect rooms: direction "oops" does not exist',
+                    '.message attribute';
+            };
     }
 }
 
