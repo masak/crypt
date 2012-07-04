@@ -264,9 +264,17 @@ class Crypt::PlayerLooked does Event {
     has $.description_of;
 }
 
+class Crypt::PlayerWalked does Event {
+    has $.to;
+}
+
 class Crypt::Game {
     method look() {
         Crypt::PlayerLooked.new(:target<room>, :description_of<clearing>);
+    }
+
+    method walk($direction) {
+        Crypt::PlayerWalked.new(:to<hill>);
     }
 }
 
@@ -483,6 +491,16 @@ multi MAIN('test') {
                         ~ "'$direction' does not exist",
                     '.message attribute';
             };
+    }
+
+    {
+        my $game = Crypt::Game.new();
+
+        is $game.walk('east'),
+            Crypt::PlayerWalked.new(
+                :to<hill>,
+            ),
+            'walking east to the hill';
     }
 
     done;
