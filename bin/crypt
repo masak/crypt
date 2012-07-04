@@ -292,6 +292,9 @@ class Adventure::Engine {
             my $direction = .direction;
             %!exits{$room1}{$direction} = $room2;
         }
+        when Adventure::PlayerWalked {
+            $!player_location = .to;
+        }
     }
 }
 
@@ -568,6 +571,16 @@ multi MAIN('test') {
                     "Cannot walk south because there is no exit there",
                     '.message attribute';
             };
+    }
+
+    {
+        my $game = Crypt::Game.new();
+
+        $game.walk('east');
+        throws_exception
+            { $game.walk('east') },
+            X::Adventure::NoExitThere,
+            'the player actually moves to the next room';
     }
 
     done;
