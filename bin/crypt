@@ -241,7 +241,7 @@ class X::Adventure::NoSuchDirection is X::Adventure {
     has $.direction;
 
     method message {
-        qq[Cannot $.action: direction "$.direction" does not exist]
+        "Cannot $.action because direction '$.direction' does not exist"
     }
 }
 
@@ -479,7 +479,8 @@ multi MAIN('test') {
                 is .action, 'connect rooms', '.action attribute';
                 is .direction, $direction, '.direction attribute';
                 is .message,
-                    'Cannot connect rooms: direction "oops" does not exist',
+                    "Cannot connect rooms because direction "
+                        ~ "'$direction' does not exist",
                     '.message attribute';
             };
     }
