@@ -228,6 +228,10 @@ class Hanoi::Game {
     }
 }
 
+class Adventure::PlayerWalked does Event {
+    has $.to;
+}
+
 class Adventure::TwoRoomsConnected does Event {
     has @.rooms;
     has $.direction;
@@ -237,11 +241,18 @@ class X::Adventure is Exception {
 }
 
 class X::Adventure::NoSuchDirection is X::Adventure {
-    has $.action;
     has $.direction;
 
     method message {
-        "Cannot $.action because direction '$.direction' does not exist"
+        "Cannot connect rooms because direction '$.direction' does not exist"
+    }
+}
+
+class X::Adventure::NoExitThere is X::Adventure {
+    has $.direction;
+
+    method message {
+        "Cannot walk $.direction because there is no exit there"
     }
 }
 
@@ -251,11 +262,36 @@ class Adventure::Engine {
         northeast northwest southeast southwest
     >;
 
+    has $!player_location = 'clearing';
+    has %!exits;
+
     method connect(@rooms, $direction) {
         die X::Adventure::NoSuchDirection.new(:action('connect rooms'), :$direction)
             unless $direction eq any(@possible_directions);
 
-        Adventure::TwoRoomsConnected.new(:@rooms, :$direction);
+        my @events = Adventure::TwoRoomsConnected.new(:@rooms, :$direction);
+        self!apply($_) for @events;
+        @events;
+    }
+
+    method walk($direction) {
+        my $to = %!exits{$!player_location}{$direction};
+
+        die X::Adventure::NoExitThere.new(:$direction)
+            unless defined $to;
+
+        my @events = Adventure::PlayerWalked.new(:$to);
+        self!apply($_) for @events;
+        @events;
+    }
+
+    # RAKUDO: private multimethods NYI
+    method !apply(Event $_) {
+        when Adventure::TwoRoomsConnected {
+            my ($room1, $room2) = .rooms.list;
+            my $direction = .direction;
+            %!exits{$room1}{$direction} = $room2;
+        }
     }
 }
 
@@ -264,17 +300,22 @@ class Crypt::PlayerLooked does Event {
     has $.description_of;
 }
 
-class Crypt::PlayerWalked does Event {
-    has $.to;
+class X::Crypt is Exception {
 }
 
 class Crypt::Game {
-    method look() {
-        Crypt::PlayerLooked.new(:target<room>, :description_of<clearing>);
+    has $!engine handles <walk>;
+
+    submethod BUILD() {
+        $!engine = Adventure::Engine.new();
+
+        given $!engine {
+            .connect(<clearing hill>, 'east');
+        }
     }
 
-    method walk($direction) {
-        Crypt::PlayerWalked.new(:to<hill>);
+    method look() {
+        Crypt::PlayerLooked.new(:target<room>, :description_of<clearing>);
     }
 }
 
@@ -484,7 +525,6 @@ multi MAIN('test') {
             X::Adventure::NoSuchDirection,
             'connecting two rooms (-) no such direction',
             {
-                is .action, 'connect rooms', '.action attribute';
                 is .direction, $direction, '.direction attribute';
                 is .message,
                     "Cannot connect rooms because direction "
@@ -497,10 +537,25 @@ multi MAIN('test') {
         my $game = Crypt::Game.new();
 
         is $game.walk('east'),
-            Crypt::PlayerWalked.new(
+            Adventure::PlayerWalked.new(
                 :to<hill>,
             ),
-            'walking east to the hill';
+            'walking (+)';
+    }
+
+    {
+        my $game = Crypt::Game.new();
+
+        throws_exception
+            { $game.walk('south') },
+            X::Adventure::NoExitThere,
+            'walking (-) in a direction without an exit',
+            {
+                is .direction, 'south', '.direction attribute';
+                is .message,
+                    "Cannot walk south because there is no exit there",
+                    '.message attribute';
+            };
     }
 
     done;
