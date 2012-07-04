@@ -337,6 +337,13 @@ multi MAIN() {
         %descriptions{$0} = ~$1;
     }
 
+    sub params($method) {
+        $method.signature.params
+            ==> grep { .positional && !.invocant }
+            ==> map { .name.substr(1) }
+    }
+    my %commands = map { $^m.name => params($m) }, $game.^methods;
+
     loop {
         my $command = prompt('> ');
         given $command {
@@ -348,12 +355,17 @@ multi MAIN() {
             $command .= lc;
             $command .= trim;
 
-            when 'look' {
-                my @events = $game.look();
-                for @events {
-                    when Crypt::PlayerLooked {
-                        say %descriptions{.description_of};
-                    }
+            my $verb = $command.words[0];
+            my @args = $command.words[1..*];
+            when %commands.exists($verb) {
+                my @req_args = %commands{$verb}.list;
+                when @args != @req_args {
+                    say "You passed in {+@args} arguments, but $verb requires {+@req_args}.";
+                    say "The arguments are {map { "<$_>" }, @req_args}.";
+                }
+                my @events = $game."$verb"(|@args);
+                CATCH {
+                    when X::Adventure { say .message, '.' }
                 }
             }
 
