@@ -358,6 +358,13 @@ multi MAIN() {
             $command .= lc;
             $command .= trim;
 
+            when /^help>>/|"h"|"?" {
+                say "Here are some (made-up) examples of commands you can use:";
+                say "";
+                say "look";
+                say "[walk] north/south/east/west";
+            }
+
             my $verb = $command.words[0];
             my @args = $command.words[1..*];
             when %commands.exists($verb) {
