@@ -232,6 +232,10 @@ class Adventure::PlayerWalked does Event {
     has $.to;
 }
 
+class Adventure::PlayerWasPlaced does Event {
+    has $.in;
+}
+
 class Adventure::TwoRoomsConnected does Event {
     has @.rooms;
     has $.direction;
@@ -256,13 +260,20 @@ class X::Adventure::NoExitThere is X::Adventure {
     }
 }
 
+class X::Adventure::PlayerIsNowhere is X::Adventure {
+    method message {
+        "Cannot move because the player isn't anywhere"
+    }
+}
+
 class Adventure::Engine {
     my @possible_directions = <
         north south east west
         northeast northwest southeast southwest
+        up down
     >;
 
-    has $!player_location = 'clearing';
+    has $!player_location;
     has %!exits;
 
     method connect(@rooms, $direction) {
@@ -275,12 +286,21 @@ class Adventure::Engine {
     }
 
     method walk($direction) {
+        die X::Adventure::PlayerIsNowhere.new()
+            unless defined $!player_location;
+
         my $to = %!exits{$!player_location}{$direction};
 
         die X::Adventure::NoExitThere.new(:$direction)
             unless defined $to;
 
         my @events = Adventure::PlayerWalked.new(:$to);
+        self!apply($_) for @events;
+        @events;
+    }
+
+    method place_player($in) {
+        my @events = Adventure::PlayerWasPlaced.new(:$in);
         self!apply($_) for @events;
         @events;
     }
@@ -294,6 +314,9 @@ class Adventure::Engine {
         }
         when Adventure::PlayerWalked {
             $!player_location = .to;
+        }
+        when Adventure::PlayerWasPlaced {
+            $!player_location = .in;
         }
     }
 }
@@ -314,6 +337,7 @@ class Crypt::Game {
 
         given $!engine {
             .connect(<clearing hill>, 'east');
+            .place_player('clearing');
         }
     }
 
@@ -588,6 +612,28 @@ multi MAIN('test') {
             { $game.walk('east') },
             X::Adventure::NoExitThere,
             'the player actually moves to the next room';
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        my @rooms = <first_floor second_floor>;
+        is $engine.connect(@rooms, my $direction = 'up'),
+            Adventure::TwoRoomsConnected.new(
+                :@rooms,
+                :$direction,
+            ),
+            'connecting two rooms vertically';
+        is $engine.place_player('first_floor'),
+            Adventure::PlayerWasPlaced.new(
+                :in<first_floor>,
+            ),
+            'placing the player';
+        is $engine.walk('up'),
+            Adventure::PlayerWalked.new(
+                :to<second_floor>,
+            ),
+            'going up to the second floor';
     }
 
     done;
