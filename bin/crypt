@@ -241,6 +241,12 @@ class Adventure::TwoRoomsConnected does Event {
     has $.direction;
 }
 
+class Adventure::DirectionAliased does Event {
+    has $.room;
+    has $.direction;
+    has $.alias;
+}
+
 class X::Adventure is Exception {
 }
 
@@ -275,6 +281,7 @@ class Adventure::Engine {
 
     has $!player_location;
     has %!exits;
+    has %!exit_aliases;
 
     method connect(@rooms, $direction) {
         die X::Adventure::NoSuchDirection.new(:action('connect rooms'), :$direction)
@@ -289,7 +296,13 @@ class Adventure::Engine {
         die X::Adventure::PlayerIsNowhere.new()
             unless defined $!player_location;
 
-        my $to = %!exits{$!player_location}{$direction};
+        my $actual_direction =
+            %!exit_aliases.exists($!player_location)
+            && %!exit_aliases{$!player_location}.exists($direction)
+                ?? %!exit_aliases{$!player_location}{$direction}
+                !! $direction;
+
+        my $to = %!exits{$!player_location}{$actual_direction};
 
         die X::Adventure::NoExitThere.new(:$direction)
             unless defined $to;
@@ -301,6 +314,14 @@ class Adventure::Engine {
 
     method place_player($in) {
         my @events = Adventure::PlayerWasPlaced.new(:$in);
+        self!apply($_) for @events;
+        @events;
+    }
+
+    method alias_direction($room, $alias, $direction) {
+        my @events = Adventure::DirectionAliased.new(
+            :$room, :$alias, :$direction
+        );
         self!apply($_) for @events;
         @events;
     }
@@ -317,6 +338,9 @@ class Adventure::Engine {
         }
         when Adventure::PlayerWasPlaced {
             $!player_location = .in;
+        }
+        when Adventure::DirectionAliased {
+            %!exit_aliases{.room}{.alias} = .direction;
         }
     }
 }
@@ -634,6 +658,35 @@ multi MAIN('test') {
                 :to<second_floor>,
             ),
             'going up to the second floor';
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        my @rooms = <outside inside>;
+        is $engine.connect(@rooms, my $direction = 'southwest'),
+            Adventure::TwoRoomsConnected.new(
+                :@rooms,
+                :$direction,
+            ),
+            'connecting outside and inside';
+        is $engine.alias_direction('outside', 'in', 'southwest'),
+            Adventure::DirectionAliased.new(
+                :room<outside>,
+                :direction<southwest>,
+                :alias<in>,
+            ),
+            'aliasing "southwest" as "in"';
+        is $engine.place_player('outside'),
+            Adventure::PlayerWasPlaced.new(
+                :in<outside>,
+            ),
+            'placing the player';
+        is $engine.walk('in'),
+            Adventure::PlayerWalked.new(
+                :to<inside>,
+            ),
+            'going inside now means going southwest';
     }
 
     done;
