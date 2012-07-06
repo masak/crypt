@@ -237,7 +237,6 @@ class Adventure::PlayerWasPlaced does Event {
 }
 
 class Adventure::PlayerLooked does Event {
-    has $.target;
     has $.description_of;
 }
 
@@ -287,6 +286,7 @@ class Adventure::Engine {
     has $!player_location;
     has %!exits;
     has %!exit_aliases;
+    has %!seen_room;
 
     method connect(@rooms, $direction) {
         die X::Adventure::NoSuchDirection.new(:action('connect rooms'), :$direction)
@@ -313,12 +313,18 @@ class Adventure::Engine {
             unless defined $to;
 
         my @events = Adventure::PlayerWalked.new(:$to);
+        unless %!seen_room{$to}++ {
+            @events.push(Adventure::PlayerLooked.new(:description_of($to)));
+        }
         self!apply($_) for @events;
         @events;
     }
 
     method place_player($in) {
         my @events = Adventure::PlayerWasPlaced.new(:$in);
+        unless %!seen_room{$in}++ {
+            @events.push(Adventure::PlayerLooked.new(:description_of($in)));
+        }
         self!apply($_) for @events;
         @events;
     }
@@ -388,7 +394,7 @@ class Crypt::Game {
     }
 
     method look() {
-        Adventure::PlayerLooked.new(:target<room>, :description_of<clearing>);
+        Adventure::PlayerLooked.new(:description_of<clearing>);
     }
 }
 
@@ -607,7 +613,6 @@ multi MAIN('test') {
 
         is $game.look(),
             Adventure::PlayerLooked.new(
-                :target('room'),
                 :description_of<clearing>,
             ),
             'looking at the room';
@@ -646,9 +651,14 @@ multi MAIN('test') {
         my $game = Crypt::Game.new();
 
         is $game.walk('east'),
-            Adventure::PlayerWalked.new(
-                :to<hill>,
-            ),
+            [
+                Adventure::PlayerWalked.new(
+                    :to<hill>,
+                ),
+                Adventure::PlayerLooked.new(
+                    :description_of<hill>,
+                ),
+            ],
             'walking (+)';
     }
 
@@ -687,12 +697,8 @@ multi MAIN('test') {
                 :$direction,
             ),
             'connecting two rooms vertically';
-        is $engine.place_player('first_floor'),
-            Adventure::PlayerWasPlaced.new(
-                :in<first_floor>,
-            ),
-            'placing the player';
-        is $engine.walk('up'),
+        $engine.place_player('first_floor');
+        is $engine.walk('up')[0],
             Adventure::PlayerWalked.new(
                 :to<second_floor>,
             ),
@@ -716,15 +722,20 @@ multi MAIN('test') {
                 :alias<in>,
             ),
             'aliasing "southwest" as "in"';
-        is $engine.place_player('outside'),
+        is $engine.place_player('outside')[0],
             Adventure::PlayerWasPlaced.new(
                 :in<outside>,
             ),
             'placing the player';
         is $engine.walk('in'),
-            Adventure::PlayerWalked.new(
-                :to<inside>,
-            ),
+            [
+                Adventure::PlayerWalked.new(
+                    :to<inside>,
+                ),
+                Adventure::PlayerLooked.new(
+                    :description_of<inside>,
+                ),
+            ],
             'going inside now means going southwest';
     }
 
