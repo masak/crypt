@@ -401,6 +401,9 @@ multi MAIN() {
     }
     my %commands = map { $^m.name => params($m) }, $game.^methods;
 
+    say "Clearing";
+    say "";
+
     loop {
         my $command = prompt('> ');
         given $command {
@@ -428,6 +431,9 @@ multi MAIN() {
                     say "The arguments are {map { "<$_>" }, @req_args}.";
                 }
                 my @events = $game."$verb"(|@args);
+                for @events {
+                    when Adventure::PlayerWalked { say ucfirst .to }
+                }
                 CATCH {
                     when X::Adventure { say .message, '.' }
                 }
