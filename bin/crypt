@@ -361,6 +361,12 @@ class Crypt::Game {
 
         given $!engine {
             .connect(<clearing hill>, 'east');
+            .connect(<hill chamber>, 'south');
+            .alias_direction('hill', 'in', 'south');
+            .alias_direction('chamber', 'out', 'north');
+            .connect(<chamber hall>, 'south');
+            .connect(<hall cave>, 'down');
+            .connect(<cave crypt>, 'northwest');
             .place_player('clearing');
         }
     }
