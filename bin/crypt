@@ -236,6 +236,11 @@ class Adventure::PlayerWasPlaced does Event {
     has $.in;
 }
 
+class Adventure::PlayerLooked does Event {
+    has $.target;
+    has $.description_of;
+}
+
 class Adventure::TwoRoomsConnected does Event {
     has @.rooms;
     has $.direction;
@@ -361,11 +366,6 @@ class Adventure::Engine {
     }
 }
 
-class Crypt::PlayerLooked does Event {
-    has $.target;
-    has $.description_of;
-}
-
 class X::Crypt is Exception {
 }
 
@@ -388,7 +388,7 @@ class Crypt::Game {
     }
 
     method look() {
-        Crypt::PlayerLooked.new(:target<room>, :description_of<clearing>);
+        Adventure::PlayerLooked.new(:target<room>, :description_of<clearing>);
     }
 }
 
@@ -606,7 +606,7 @@ multi MAIN('test') {
         my $game = Crypt::Game.new();
 
         is $game.look(),
-            Crypt::PlayerLooked.new(
+            Adventure::PlayerLooked.new(
                 :target('room'),
                 :description_of<clearing>,
             ),
