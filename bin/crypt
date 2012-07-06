@@ -326,12 +326,28 @@ class Adventure::Engine {
         @events;
     }
 
+    sub opposite($direction) {
+        my %opposites =
+            'north'     => 'south',
+            'east'      => 'west',
+            'northeast' => 'southwest',
+            'northwest' => 'southeast',
+            'up'        => 'down',
+            'in'        => 'out',
+        ;
+
+        %opposites.push( %opposites.invert );
+
+        %opposites{$direction};
+    }
+
     # RAKUDO: private multimethods NYI
     method !apply(Event $_) {
         when Adventure::TwoRoomsConnected {
             my ($room1, $room2) = .rooms.list;
             my $direction = .direction;
             %!exits{$room1}{$direction} = $room2;
+            %!exits{$room2}{opposite $direction} = $room1;
         }
         when Adventure::PlayerWalked {
             $!player_location = .to;
@@ -699,6 +715,20 @@ multi MAIN('test') {
                 :to<inside>,
             ),
             'going inside now means going southwest';
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        my @rooms = <kitchen veranda>;
+        $engine.connect(@rooms, my $direction = 'south');
+        $engine.place_player('kitchen');
+        $engine.walk('south');
+        is $engine.walk('north'),
+            Adventure::PlayerWalked.new(
+                :to<kitchen>,
+            ),
+            'connecting two rooms creates a mutual connection';
     }
 
     done;
