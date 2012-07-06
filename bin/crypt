@@ -429,8 +429,12 @@ multi MAIN() {
         up down in out
     >;
 
-    say "Clearing";
-    say "";
+    given 'clearing' {
+        say .ucfirst;
+        say "";
+        say %descriptions{$_};
+        say "";
+    }
 
     loop {
         my $command = prompt('> ');
@@ -465,7 +469,10 @@ multi MAIN() {
                 }
                 my @events = $game."$verb"(|@args);
                 for @events {
-                    when Adventure::PlayerWalked { say ucfirst .to }
+                    when Adventure::PlayerWalked { say ucfirst .to; say "" }
+                    when Adventure::PlayerLooked {
+                        say %descriptions{.description_of};
+                    }
                 }
                 CATCH {
                     when X::Adventure { say .message, '.' }
