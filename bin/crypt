@@ -417,6 +417,12 @@ multi MAIN() {
     }
     my %commands = map { $^m.name => params($m) }, $game.^methods;
 
+    my @possible_directions = <
+        north south east west
+        northeast northwest southeast southwest
+        up down in out
+    >;
+
     say "Clearing";
     say "";
 
@@ -436,6 +442,11 @@ multi MAIN() {
                 say "";
                 say "look";
                 say "[walk] north/south/east/west";
+            }
+
+            when any @possible_directions {
+                $command = "walk $command";
+                proceed;
             }
 
             my $verb = $command.words[0];
