@@ -320,6 +320,12 @@ class Adventure::Engine {
         @events;
     }
 
+    method look() {
+        my @events = Adventure::PlayerLooked.new(:description_of($!player_location));
+        self!apply($_) for @events;
+        @events;
+    }
+
     method place_player($in) {
         my @events = Adventure::PlayerWasPlaced.new(:$in);
         unless %!seen_room{$in}++ {
@@ -393,8 +399,8 @@ class Crypt::Game {
         }
     }
 
-    method look() {
-        Adventure::PlayerLooked.new(:description_of<clearing>);
+    method look {
+        return $!engine.look;
     }
 }
 
