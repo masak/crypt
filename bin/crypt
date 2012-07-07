@@ -484,6 +484,7 @@ multi MAIN() {
 
             when 'save' {
                 $save = $game.save;
+                say "Game saved.";
             }
 
             when 'restore' {
