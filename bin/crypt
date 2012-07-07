@@ -497,6 +497,7 @@ multi MAIN() {
                 for @events {
                     when Adventure::PlayerLooked {
                         say ucfirst .description_of;
+                        say "";
                         say %descriptions{.description_of};
                     }
                 }
