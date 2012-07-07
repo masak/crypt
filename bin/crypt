@@ -283,6 +283,7 @@ class Adventure::Engine {
         up down
     >;
 
+    has @!events;
     has $!player_location;
     has %!exits;
     has %!exit_aliases;
@@ -343,6 +344,20 @@ class Adventure::Engine {
         @events;
     }
 
+    my class Save {
+        has @.events;
+    }
+
+    method save {
+        return Save.new(:@!events);
+    }
+
+    method restore(Save $save) {
+        my $new-engine = Adventure::Engine.new();
+        $new-engine!apply($_) for $save.events.list;
+        return $new-engine;
+    }
+
     sub opposite($direction) {
         my %opposites =
             'north'     => 'south',
@@ -360,6 +375,7 @@ class Adventure::Engine {
 
     # RAKUDO: private multimethods NYI
     method !apply(Event $_) {
+        push @!events, $_;
         when Adventure::TwoRoomsConnected {
             my ($room1, $room2) = .rooms.list;
             my $direction = .direction;
@@ -382,7 +398,7 @@ class X::Crypt is Exception {
 }
 
 class Crypt::Game {
-    has $!engine handles <walk>;
+    has $!engine handles <walk save>;
 
     submethod BUILD() {
         $!engine = Adventure::Engine.new();
@@ -402,6 +418,11 @@ class Crypt::Game {
     method look {
         return $!engine.look;
     }
+
+    method restore($save) {
+        $!engine .= restore($save);
+        return;
+    }
 }
 
 multi MAIN() {
@@ -415,6 +436,7 @@ multi MAIN() {
     say "";
 
     my $game = Crypt::Game.new();
+    my $save;
     my %descriptions;
     for slurp("game-data/descriptions").trim.split(/\n\n/) {
         /^^ '== ' (\N+) \n (.*)/
@@ -458,6 +480,25 @@ multi MAIN() {
                 say "";
                 say "look";
                 say "[walk] north/south/east/west";
+            }
+
+            when 'save' {
+                $save = $game.save;
+            }
+
+            when 'restore' {
+                when !defined $save {
+                    say "No game has been saved yet.";
+                }
+                $game.restore($save);
+
+                my @events = $game.look;
+                for @events {
+                    when Adventure::PlayerLooked {
+                        say ucfirst .description_of;
+                        say %descriptions{.description_of};
+                    }
+                }
             }
 
             when any @possible_directions {
