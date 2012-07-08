@@ -289,6 +289,7 @@ class Adventure::Engine {
     has %!exits;
     has %!exit_aliases;
     has %!seen_room;
+    has %!try_exit_hooks;
 
     method connect(@rooms, $direction) {
         die X::Adventure::NoSuchDirection.new(:action('connect rooms'), :$direction)
@@ -313,6 +314,10 @@ class Adventure::Engine {
 
         die X::Adventure::NoExitThere.new(:$direction)
             unless defined $to;
+
+        if %!try_exit_hooks{$!player_location}{$actual_direction} -> &hook {
+            return unless &hook();
+        }
 
         my @events = Adventure::PlayerWalked.new(:$to);
         unless %!seen_room{$to}++ {
@@ -352,6 +357,10 @@ class Adventure::Engine {
         );
         self!apply($_) for @events;
         @events;
+    }
+
+    method on_try_exit($room, $direction, &hook) {
+        %!try_exit_hooks{$room}{$direction} = &hook;
     }
 
     my class Save {
@@ -421,6 +430,10 @@ class Crypt::Game {
             .connect(<chamber hall>, 'south');
             .connect(<hall cave>, 'down');
             .connect(<cave crypt>, 'northwest');
+            .on_try_exit('cave', 'northwest', {
+                say "You try to walk past the fire, but it's too hot!";
+                False;
+            });
             .place_player('clearing');
         }
     }
