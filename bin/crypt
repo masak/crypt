@@ -237,7 +237,7 @@ class Adventure::PlayerWasPlaced does Event {
 }
 
 class Adventure::PlayerLooked does Event {
-    has $.description_of;
+    has $.room;
     has @.exits;
 }
 
@@ -326,7 +326,7 @@ class Adventure::Engine {
         my @events = Adventure::PlayerWalked.new(:$to);
         unless %!seen_room{$to}++ {
             @events.push(Adventure::PlayerLooked.new(
-                :description_of($to),
+                :room($to),
                 :exits(%!exits{$to}.keys),
             ));
         }
@@ -336,7 +336,7 @@ class Adventure::Engine {
 
     method look() {
         my @events = Adventure::PlayerLooked.new(
-            :description_of($!player_location),
+            :room($!player_location),
             :exits(%!exits{$!player_location}.keys),
         );
         self!apply($_) for @events;
@@ -347,7 +347,7 @@ class Adventure::Engine {
         my @events = Adventure::PlayerWasPlaced.new(:$in);
         unless %!seen_room{$in}++ {
             @events.push(Adventure::PlayerLooked.new(
-                :description_of($in),
+                :room($in),
                 :exits(%!exits{$in}.keys),
             ));
         }
@@ -534,9 +534,9 @@ multi MAIN() {
                 my @events = $game.look;
                 for @events {
                     when Adventure::PlayerLooked {
-                        say ucfirst .description_of;
+                        say ucfirst .room;
                         say "";
-                        say %descriptions{.description_of};
+                        say %descriptions{.room};
                         if .exits {
                             say "You can go {join ' and ', .exits}.";
                         }
@@ -561,7 +561,7 @@ multi MAIN() {
                 for @events {
                     when Adventure::PlayerWalked { say ucfirst .to; say "" }
                     when Adventure::PlayerLooked {
-                        say %descriptions{.description_of};
+                        say %descriptions{.room};
                         if .exits {
                             say "You can go {join ' and ', .exits}.";
                         }
@@ -713,7 +713,7 @@ multi MAIN('test') {
 
         is $game.look(),
             Adventure::PlayerLooked.new(
-                :description_of<clearing>,
+                :room<clearing>,
                 :exits<east>,
             ),
             'looking at the room';
@@ -757,7 +757,7 @@ multi MAIN('test') {
                     :to<hill>,
                 ),
                 Adventure::PlayerLooked.new(
-                    :description_of<hill>,
+                    :room<hill>,
                     :exits<west>,
                 ),
             ],
@@ -835,7 +835,7 @@ multi MAIN('test') {
                     :to<inside>,
                 ),
                 Adventure::PlayerLooked.new(
-                    :description_of<inside>,
+                    :room<inside>,
                     :exits<northeast>,
                 ),
             ],
