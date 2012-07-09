@@ -333,7 +333,7 @@ class Adventure::Engine {
     method look() {
         my @events = Adventure::PlayerLooked.new(
             :description_of($!player_location),
-            :exits(%!exits($!player_location)),
+            :exits(%!exits{$!player_location}.keys),
         );
         self!apply($_) for @events;
         @events;
@@ -699,6 +699,7 @@ multi MAIN('test') {
         is $game.look(),
             Adventure::PlayerLooked.new(
                 :description_of<clearing>,
+                :exits<east>,
             ),
             'looking at the room';
     }
@@ -742,6 +743,7 @@ multi MAIN('test') {
                 ),
                 Adventure::PlayerLooked.new(
                     :description_of<hill>,
+                    :exits<west>,
                 ),
             ],
             'walking (+)';
@@ -819,6 +821,7 @@ multi MAIN('test') {
                 ),
                 Adventure::PlayerLooked.new(
                     :description_of<inside>,
+                    :exits<northeast>,
                 ),
             ],
             'going inside now means going southwest';
