@@ -252,6 +252,10 @@ class Adventure::DirectionAliased does Event {
     has $.alias;
 }
 
+class Adventure::PlayerExamined does Event {
+    has $.thing;
+}
+
 class X::Adventure is Exception {
 }
 
@@ -354,6 +358,17 @@ class Adventure::Engine {
     method alias_direction($room, $alias, $direction) {
         my @events = Adventure::DirectionAliased.new(
             :$room, :$alias, :$direction
+        );
+        self!apply($_) for @events;
+        @events;
+    }
+
+    method place_thing($thing, $room) {
+    }
+
+    method examine($thing) {
+        my @events = Adventure::PlayerExamined.new(
+            :$thing
         );
         self!apply($_) for @events;
         @events;
@@ -839,6 +854,18 @@ multi MAIN('test') {
                 :to<kitchen>,
             ),
             'connecting two rooms creates a mutual connection';
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('ball', 'street');
+        $engine.place_player('street');
+        is $engine.examine('ball'),
+            Adventure::PlayerExamined.new(
+                :thing<ball>,
+            ),
+            'examining an object (+)';
     }
 
     done;
