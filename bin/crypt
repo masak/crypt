@@ -256,6 +256,11 @@ class Adventure::PlayerExamined does Event {
     has $.thing;
 }
 
+class Adventure::ThingPlaced does Event {
+    has $.thing;
+    has $.room;
+}
+
 class X::Adventure is Exception {
 }
 
@@ -281,6 +286,14 @@ class X::Adventure::PlayerIsNowhere is X::Adventure {
     }
 }
 
+class X::Adventure::NoSuchThingHere is X::Adventure {
+    has $.thing;
+
+    method message {
+        "You see no $.thing here"
+    }
+}
+
 class Adventure::Engine {
     my @possible_directions = <
         north south east west
@@ -294,6 +307,7 @@ class Adventure::Engine {
     has %!exit_aliases;
     has %!seen_room;
     has %!try_exit_hooks;
+    has %!thing_rooms;
 
     method connect(@rooms, $direction) {
         die X::Adventure::NoSuchDirection.new(:action('connect rooms'), :$direction)
@@ -364,9 +378,17 @@ class Adventure::Engine {
     }
 
     method place_thing($thing, $room) {
+        my @events = Adventure::ThingPlaced.new(
+            :$thing, :$room
+        );
+        self!apply($_) for @events;
+        @events;
     }
 
     method examine($thing) {
+        die X::Adventure::NoSuchThingHere.new(:$thing)
+            unless (%!thing_rooms{$thing} // '') eq $!player_location;
+
         my @events = Adventure::PlayerExamined.new(
             :$thing
         );
@@ -424,6 +446,9 @@ class Adventure::Engine {
         }
         when Adventure::DirectionAliased {
             %!exit_aliases{.room}{.alias} = .direction;
+        }
+        when Adventure::ThingPlaced {
+            %!thing_rooms{.thing} = .room;
         }
     }
 }
@@ -866,6 +891,20 @@ multi MAIN('test') {
                 :thing<ball>,
             ),
             'examining an object (+)';
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_player('street');
+        throws_exception
+            { $engine.examine('ball') },
+            X::Adventure::NoSuchThingHere,
+            'examining an object (-) no such object here',
+            {
+                is .thing, 'ball', '.thing attribute';
+                is .message, "You see no ball here", '.message attribute';
+            };
     }
 
     done;
