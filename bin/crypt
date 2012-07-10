@@ -298,6 +298,14 @@ class X::Adventure::NoSuchThingHere is X::Adventure {
     }
 }
 
+class X::Adventure::ThingNotOpenable is X::Adventure {
+    has $.thing;
+
+    method message {
+        "You cannot open the $.thing"
+    }
+}
+
 class Adventure::Engine {
     my @possible_directions = <
         north south east west
@@ -312,6 +320,7 @@ class Adventure::Engine {
     has %!seen_room;
     has %!try_exit_hooks;
     has %!thing_rooms;
+    has %!openable_things;
 
     method connect(@rooms, $direction) {
         die X::Adventure::NoSuchDirection.new(:action('connect rooms'), :$direction)
@@ -401,9 +410,13 @@ class Adventure::Engine {
     }
 
     method make_thing_openable($thing) {
+        %!openable_things{$thing} = True;
     }
 
     method open($thing) {
+        die X::Adventure::ThingNotOpenable.new(:$thing)
+            unless %!openable_things{$thing};
+
         Adventure::PlayerOpened.new(:$thing);
     }
 
@@ -929,6 +942,21 @@ multi MAIN('test') {
                 :thing<car>,
             ),
             'opening an object (+)';
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('ball', 'street');
+        $engine.place_player('street');
+        throws_exception
+            { $engine.open('ball') },
+            X::Adventure::ThingNotOpenable,
+            'opening an object (-) it is not openable',
+            {
+                is .thing, 'ball', '.thing attribute';
+                is .message, "You cannot open the ball", '.message attribute';
+            };
     }
 
     done;
