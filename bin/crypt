@@ -306,6 +306,14 @@ class X::Adventure::ThingNotOpenable is X::Adventure {
     }
 }
 
+class X::Adventure::ThingAlreadyOpen is X::Adventure {
+    has $.thing;
+
+    method message {
+        "The $.thing is open"
+    }
+}
+
 class Adventure::Engine {
     my @possible_directions = <
         north south east west
@@ -321,6 +329,7 @@ class Adventure::Engine {
     has %!try_exit_hooks;
     has %!thing_rooms;
     has %!openable_things;
+    has %!open_things;
 
     method connect(@rooms, $direction) {
         die X::Adventure::NoSuchDirection.new(:action('connect rooms'), :$direction)
@@ -417,7 +426,12 @@ class Adventure::Engine {
         die X::Adventure::ThingNotOpenable.new(:$thing)
             unless %!openable_things{$thing};
 
-        Adventure::PlayerOpened.new(:$thing);
+        die X::Adventure::ThingAlreadyOpen.new(:$thing)
+            if %!open_things{$thing};
+
+        my @events = Adventure::PlayerOpened.new(:$thing);
+        self!apply($_) for @events;
+        @events;
     }
 
     method on_try_exit($room, $direction, &hook) {
@@ -473,6 +487,9 @@ class Adventure::Engine {
         }
         when Adventure::ThingPlaced {
             %!thing_rooms{.thing} = .room;
+        }
+        when Adventure::PlayerOpened {
+            %!open_things{.thing} = True;
         }
     }
 }
@@ -956,6 +973,23 @@ multi MAIN('test') {
             {
                 is .thing, 'ball', '.thing attribute';
                 is .message, "You cannot open the ball", '.message attribute';
+            };
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('car', 'street');
+        $engine.make_thing_openable('car');
+        $engine.place_player('street');
+        $engine.open('car');
+        throws_exception
+            { $engine.open('car') },
+            X::Adventure::ThingAlreadyOpen,
+            'opening an object (-) it is already open',
+            {
+                is .thing, 'car', '.thing attribute';
+                is .message, "The car is open", '.message attribute';
             };
     }
 
