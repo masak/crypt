@@ -261,6 +261,10 @@ class Adventure::ThingPlaced does Event {
     has $.room;
 }
 
+class Adventure::PlayerOpened does Event {
+    has $.thing;
+}
+
 class X::Adventure is Exception {
 }
 
@@ -394,6 +398,13 @@ class Adventure::Engine {
         );
         self!apply($_) for @events;
         @events;
+    }
+
+    method make_thing_openable($thing) {
+    }
+
+    method open($thing) {
+        Adventure::PlayerOpened.new(:$thing);
     }
 
     method on_try_exit($room, $direction, &hook) {
@@ -905,6 +916,19 @@ multi MAIN('test') {
                 is .thing, 'ball', '.thing attribute';
                 is .message, "You see no ball here", '.message attribute';
             };
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('car', 'street');
+        $engine.make_thing_openable('car');
+        $engine.place_player('street');
+        is $engine.open('car'),
+            Adventure::PlayerOpened.new(
+                :thing<car>,
+            ),
+            'opening an object (+)';
     }
 
     done;
