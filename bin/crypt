@@ -270,6 +270,10 @@ class Adventure::PlayerPut does Event {
     has $.in;
 }
 
+class Adventure::ThingMadeAContainer does Event {
+    has $.thing;
+}
+
 class X::Adventure is Exception {
 }
 
@@ -319,6 +323,14 @@ class X::Adventure::ThingAlreadyOpen is X::Adventure {
     }
 }
 
+class X::Adventure::CannotPutInNonContainer is X::Adventure {
+    has $.in;
+
+    method message {
+        "You cannot put things in the $.in"
+    }
+}
+
 class Adventure::Engine {
     my @possible_directions = <
         north south east west
@@ -335,6 +347,7 @@ class Adventure::Engine {
     has %!thing_rooms;
     has %!openable_things;
     has %!open_things;
+    has %!containers;
 
     method connect(@rooms, $direction) {
         die X::Adventure::NoSuchDirection.new(:action('connect rooms'), :$direction)
@@ -440,9 +453,15 @@ class Adventure::Engine {
     }
 
     method make_thing_a_container($thing) {
+        my @events = Adventure::ThingMadeAContainer.new(:$thing);
+        self!apply($_) for @events;
+        @events;
     }
 
     method put_thing_in($thing, $in) {
+        die X::Adventure::CannotPutInNonContainer.new(:$in)
+            unless %!containers{$in};
+
         Adventure::PlayerPut.new(:$thing, :$in);
     }
 
@@ -502,6 +521,9 @@ class Adventure::Engine {
         }
         when Adventure::PlayerOpened {
             %!open_things{.thing} = True;
+        }
+        when Adventure::ThingMadeAContainer {
+            %!containers{.thing} = True;
         }
     }
 }
@@ -1018,6 +1040,25 @@ multi MAIN('test') {
                 :in<box>,
             ),
             'putting a thing inside another (+)';
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('brick', 'street');
+        $engine.place_thing('doll', 'street');
+        # don't make brick a container
+        $engine.place_player('street');
+        throws_exception
+            { $engine.put_thing_in('doll', 'brick') },
+            X::Adventure::CannotPutInNonContainer,
+            'putting a thing inside another (-) it is not a container',
+            {
+                is .in, 'brick', '.in attribute';
+                is .message,
+                    "You cannot put things in the brick",
+                    '.message attribute';
+            };
     }
 
     done;
