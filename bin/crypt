@@ -462,7 +462,14 @@ class Adventure::Engine {
         die X::Adventure::CannotPutInNonContainer.new(:$in)
             unless %!containers{$in};
 
-        Adventure::PlayerPut.new(:$thing, :$in);
+        my @events;
+
+        if %!openable_things{$in} && !%!open_things{$in} {
+            @events.push(Adventure::PlayerOpened.new(:thing($in)));
+        }
+
+        @events.push(Adventure::PlayerPut.new(:$thing, :$in));
+        @events;
     }
 
     method on_try_exit($room, $direction, &hook) {
@@ -1059,6 +1066,27 @@ multi MAIN('test') {
                     "You cannot put things in the brick",
                     '.message attribute';
             };
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('crate', 'street');
+        $engine.place_thing('doll', 'street');
+        $engine.make_thing_a_container('crate');
+        $engine.make_thing_openable('crate');
+        $engine.place_player('street');
+        is $engine.put_thing_in('doll', 'crate'),
+            [
+                Adventure::PlayerOpened.new(
+                    :thing<crate>,
+                ),
+                Adventure::PlayerPut.new(
+                    :thing<doll>,
+                    :in<crate>,
+                ),
+            ],
+            'putting a thing inside another (+) container was closed';
     }
 
     done;
