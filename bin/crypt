@@ -341,10 +341,11 @@ class X::Adventure::CannotPutInNonContainer is X::Adventure {
 }
 
 class X::Adventure::YoDawg is X::Adventure {
-    has $.in;
+    has $.relation;
+    has $.thing;
 
     method message {
-        "Yo dawg, I know you like a $.in so I put a $.in in your $.in"
+        "Yo dawg, I know you like a $.thing so I put a $.thing $.relation your $.thing"
     }
 }
 
@@ -488,7 +489,7 @@ class Adventure::Engine {
         die X::Adventure::CannotPutInNonContainer.new(:$in)
             unless %!containers{$in};
 
-        die X::Adventure::YoDawg.new(:$in)
+        die X::Adventure::YoDawg.new(:relation<in>, :thing($in))
             if $thing eq $in;
 
         my @events;
@@ -510,6 +511,9 @@ class Adventure::Engine {
     method put_thing_on($thing, $on) {
         die X::Adventure::CannotPutOnNonPlatform.new(:$on)
             unless %!platforms{$on};
+
+        die X::Adventure::YoDawg.new(:relation<on>, :thing($on))
+            if $thing eq $on;
 
         Adventure::PlayerPutOn.new(:$thing, :$on);
     }
@@ -1145,7 +1149,8 @@ multi MAIN('test') {
             X::Adventure::YoDawg,
             'putting a thing inside another (-) but it is the same thing',
             {
-                is .in, 'box', '.in attribute';
+                is .relation, 'in', '.relation attribute';
+                is .thing, 'box', '.thing attribute';
                 is .message,
                     "Yo dawg, I know you like a box so I put a box in your box",
                     '.message attribute';
@@ -1182,6 +1187,25 @@ multi MAIN('test') {
                 is .on, 'hole', '.on attribute';
                 is .message,
                     "You cannot put things on the hole",
+                    '.message attribute';
+            };
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('surface', 'street');
+        $engine.make_thing_a_platform('surface');
+        $engine.place_player('street');
+        throws_exception
+            { $engine.put_thing_on('surface', 'surface') },
+            X::Adventure::YoDawg,
+            'putting a thing on another (-) but it is the same thing',
+            {
+                is .relation, 'on', '.relation attribute';
+                is .thing, 'surface', '.thing attribute';
+                is .message,
+                    "Yo dawg, I know you like a surface so I put a surface on your surface",
                     '.message attribute';
             };
     }
