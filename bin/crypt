@@ -331,6 +331,14 @@ class X::Adventure::CannotPutInNonContainer is X::Adventure {
     }
 }
 
+class X::Adventure::YoDawg is X::Adventure {
+    has $.in;
+
+    method message {
+        "Yo dawg, I know you like a $.in so I put a $.in in your $.in"
+    }
+}
+
 class Adventure::Engine {
     my @possible_directions = <
         north south east west
@@ -461,6 +469,9 @@ class Adventure::Engine {
     method put_thing_in($thing, $in) {
         die X::Adventure::CannotPutInNonContainer.new(:$in)
             unless %!containers{$in};
+
+        die X::Adventure::YoDawg.new(:$in)
+            if $thing eq $in;
 
         my @events;
 
@@ -1087,6 +1098,24 @@ multi MAIN('test') {
                 ),
             ],
             'putting a thing inside another (+) container was closed';
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('box', 'street');
+        $engine.make_thing_a_container('box');
+        $engine.place_player('street');
+        throws_exception
+            { $engine.put_thing_in('box', 'box') },
+            X::Adventure::YoDawg,
+            'putting a thing inside another (-) but it is the same thing',
+            {
+                is .in, 'box', '.in attribute';
+                is .message,
+                    "Yo dawg, I know you like a box so I put a box in your box",
+                    '.message attribute';
+            };
     }
 
     done;
