@@ -265,13 +265,18 @@ class Adventure::PlayerOpened does Event {
     has $.thing;
 }
 
-class Adventure::PlayerPut does Event {
+class Adventure::PlayerPutIn does Event {
     has $.thing;
     has $.in;
 }
 
 class Adventure::ThingMadeAContainer does Event {
     has $.thing;
+}
+
+class Adventure::PlayerPutOn does Event {
+    has $.thing;
+    has $.on;
 }
 
 class X::Adventure is Exception {
@@ -479,8 +484,15 @@ class Adventure::Engine {
             @events.push(Adventure::PlayerOpened.new(:thing($in)));
         }
 
-        @events.push(Adventure::PlayerPut.new(:$thing, :$in));
+        @events.push(Adventure::PlayerPutIn.new(:$thing, :$in));
         @events;
+    }
+
+    method make_thing_a_platform($thing) {
+    }
+
+    method put_thing_on($thing, $on) {
+        Adventure::PlayerPutOn.new(:$thing, :$on);
     }
 
     method on_try_exit($room, $direction, &hook) {
@@ -1053,7 +1065,7 @@ multi MAIN('test') {
         $engine.make_thing_a_container('box');
         $engine.place_player('street');
         is $engine.put_thing_in('doll', 'box'),
-            Adventure::PlayerPut.new(
+            Adventure::PlayerPutIn.new(
                 :thing<doll>,
                 :in<box>,
             ),
@@ -1092,7 +1104,7 @@ multi MAIN('test') {
                 Adventure::PlayerOpened.new(
                     :thing<crate>,
                 ),
-                Adventure::PlayerPut.new(
+                Adventure::PlayerPutIn.new(
                     :thing<doll>,
                     :in<crate>,
                 ),
@@ -1116,6 +1128,21 @@ multi MAIN('test') {
                     "Yo dawg, I know you like a box so I put a box in your box",
                     '.message attribute';
             };
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('surface', 'street');
+        $engine.place_thing('doll', 'street');
+        $engine.make_thing_a_platform('surface');
+        $engine.place_player('street');
+        is $engine.put_thing_on('doll', 'surface'),
+            Adventure::PlayerPutOn.new(
+                :thing<doll>,
+                :on<surface>,
+            ),
+            'putting a thing on another (+)';
     }
 
     done;
