@@ -279,6 +279,10 @@ class Adventure::PlayerPutOn does Event {
     has $.on;
 }
 
+class Adventure::ThingMadeAPlatform does Event {
+    has $.thing;
+}
+
 class X::Adventure is Exception {
 }
 
@@ -344,6 +348,14 @@ class X::Adventure::YoDawg is X::Adventure {
     }
 }
 
+class X::Adventure::CannotPutOnNonPlatform is X::Adventure {
+    has $.on;
+
+    method message {
+        "You cannot put things on the $.on"
+    }
+}
+
 class Adventure::Engine {
     my @possible_directions = <
         north south east west
@@ -361,6 +373,7 @@ class Adventure::Engine {
     has %!openable_things;
     has %!open_things;
     has %!containers;
+    has %!platforms;
 
     method connect(@rooms, $direction) {
         die X::Adventure::NoSuchDirection.new(:action('connect rooms'), :$direction)
@@ -489,9 +502,15 @@ class Adventure::Engine {
     }
 
     method make_thing_a_platform($thing) {
+        my @events = Adventure::ThingMadeAPlatform.new(:$thing);
+        self!apply($_) for @events;
+        @events;
     }
 
     method put_thing_on($thing, $on) {
+        die X::Adventure::CannotPutOnNonPlatform.new(:$on)
+            unless %!platforms{$on};
+
         Adventure::PlayerPutOn.new(:$thing, :$on);
     }
 
@@ -554,6 +573,9 @@ class Adventure::Engine {
         }
         when Adventure::ThingMadeAContainer {
             %!containers{.thing} = True;
+        }
+        when Adventure::ThingMadeAPlatform {
+            %!platforms{.thing} = True;
         }
     }
 }
@@ -1143,6 +1165,25 @@ multi MAIN('test') {
                 :on<surface>,
             ),
             'putting a thing on another (+)';
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('hole', 'street');
+        $engine.place_thing('doll', 'street');
+        # don't make hole a platform
+        $engine.place_player('street');
+        throws_exception
+            { $engine.put_thing_on('doll', 'hole') },
+            X::Adventure::CannotPutOnNonPlatform,
+            'putting a thing on another (-) it is not a platform',
+            {
+                is .on, 'hole', '.on attribute';
+                is .message,
+                    "You cannot put things on the hole",
+                    '.message attribute';
+            };
     }
 
     done;
