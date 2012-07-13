@@ -283,6 +283,10 @@ class Adventure::ThingMadeAPlatform does Event {
     has $.thing;
 }
 
+class Adventure::PlayerRead does Event {
+    has $.thing;
+}
+
 class X::Adventure is Exception {
 }
 
@@ -516,6 +520,13 @@ class Adventure::Engine {
             if $thing eq $on;
 
         Adventure::PlayerPutOn.new(:$thing, :$on);
+    }
+
+    method make_thing_readable($thing) {
+    }
+
+    method read($thing) {
+        Adventure::PlayerRead.new(:$thing);
     }
 
     method on_try_exit($room, $direction, &hook) {
@@ -1208,6 +1219,19 @@ multi MAIN('test') {
                     "Yo dawg, I know you like a surface so I put a surface on your surface",
                     '.message attribute';
             };
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('book', 'library');
+        $engine.make_thing_readable('book');
+        $engine.place_player('library');
+        is $engine.read('book'),
+            Adventure::PlayerRead.new(
+                :thing<book>,
+            ),
+            'reading a thing (+)';
     }
 
     done;
