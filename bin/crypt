@@ -287,6 +287,10 @@ class Adventure::PlayerRead does Event {
     has $.thing;
 }
 
+class Adventure::ThingMadeReadable does Event {
+    has $.thing;
+}
+
 class X::Adventure is Exception {
 }
 
@@ -361,6 +365,14 @@ class X::Adventure::CannotPutOnNonPlatform is X::Adventure {
     }
 }
 
+class X::Adventure::ThingIsNotReadable is X::Adventure {
+    has $.thing;
+
+    method message {
+        "There is nothing to read on the $.thing"
+    }
+}
+
 class Adventure::Engine {
     my @possible_directions = <
         north south east west
@@ -379,6 +391,7 @@ class Adventure::Engine {
     has %!open_things;
     has %!containers;
     has %!platforms;
+    has %!readable_things;
 
     method connect(@rooms, $direction) {
         die X::Adventure::NoSuchDirection.new(:action('connect rooms'), :$direction)
@@ -523,9 +536,15 @@ class Adventure::Engine {
     }
 
     method make_thing_readable($thing) {
+        my @events = Adventure::ThingMadeReadable.new(:$thing);
+        self!apply($_) for @events;
+        @events;
     }
 
     method read($thing) {
+        die X::Adventure::ThingIsNotReadable.new(:$thing)
+            unless %!readable_things{$thing};
+
         Adventure::PlayerRead.new(:$thing);
     }
 
@@ -591,6 +610,9 @@ class Adventure::Engine {
         }
         when Adventure::ThingMadeAPlatform {
             %!platforms{.thing} = True;
+        }
+        when Adventure::ThingMadeReadable {
+            %!readable_things{.thing} = True;
         }
     }
 }
@@ -1232,6 +1254,24 @@ multi MAIN('test') {
                 :thing<book>,
             ),
             'reading a thing (+)';
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('ball', 'library');
+        # don't make ball readable
+        $engine.place_player('library');
+        throws_exception
+            { $engine.read('ball') },
+            X::Adventure::ThingIsNotReadable,
+            'reading a thing (-) it is not readable',
+            {
+                is .thing, 'ball', '.thing attribute';
+                is .message,
+                    "There is nothing to read on the ball",
+                    '.message attribute';
+            };
     }
 
     done;
