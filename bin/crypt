@@ -295,6 +295,10 @@ class Adventure::ThingHidden does Event {
     has $.thing;
 }
 
+class Adventure::ThingUnhidden does Event {
+    has $.thing;
+}
+
 class X::Adventure is Exception {
 }
 
@@ -397,6 +401,7 @@ class Adventure::Engine {
     has %!platforms;
     has %!readable_things;
     has %!hidden_things;
+    has %!examine_hooks;
 
     method connect(@rooms, $direction) {
         die X::Adventure::NoSuchDirection.new(:action('connect rooms'), :$direction)
@@ -490,6 +495,10 @@ class Adventure::Engine {
         my @events = Adventure::PlayerExamined.new(
             :$thing
         );
+        if %!examine_hooks{$thing} -> &hook {
+            @events.push(&hook());
+        }
+
         self!apply($_) for @events;
         @events;
     }
@@ -586,8 +595,18 @@ class Adventure::Engine {
         @events;
     }
 
+    method unhide_thing($thing) {
+        my @events = Adventure::ThingUnhidden.new(:$thing);
+        self!apply($_) for @events;
+        @events;
+    }
+
     method on_try_exit($room, $direction, &hook) {
         %!try_exit_hooks{$room}{$direction} = &hook;
+    }
+
+    method on_examine($thing, &hook) {
+        %!examine_hooks{$thing} = &hook;
     }
 
     my class Save {
@@ -654,6 +673,9 @@ class Adventure::Engine {
         }
         when Adventure::ThingHidden {
             %!hidden_things{.thing} = True;
+        }
+        when Adventure::ThingUnhidden {
+            %!hidden_things{.thing} = False;
         }
     }
 }
@@ -1350,6 +1372,23 @@ multi MAIN('test') {
             { $engine.open('flask') },
             X::Adventure::NoSuchThingHere,
             'opening a thing (-) cannot because it is in another room';
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('door', 'hill');
+        $engine.place_thing('grass', 'hill');
+        $engine.make_thing_openable('door');
+        $engine.hide_thing('door');
+        $engine.on_examine('grass', { $engine.unhide_thing('door') });
+        $engine.place_player('hill');
+        $engine.examine('grass');
+        is $engine.open('door'),
+            Adventure::PlayerOpened.new(
+                :thing<door>,
+            ),
+            'opening a thing (+) unhidden by a callback';
     }
 
     done;
