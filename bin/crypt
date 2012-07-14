@@ -291,6 +291,10 @@ class Adventure::ThingMadeReadable does Event {
     has $.thing;
 }
 
+class Adventure::ThingHidden does Event {
+    has $.thing;
+}
+
 class X::Adventure is Exception {
 }
 
@@ -392,6 +396,7 @@ class Adventure::Engine {
     has %!containers;
     has %!platforms;
     has %!readable_things;
+    has %!hidden_things;
 
     method connect(@rooms, $direction) {
         die X::Adventure::NoSuchDirection.new(:action('connect rooms'), :$direction)
@@ -478,6 +483,9 @@ class Adventure::Engine {
 
         die X::Adventure::NoSuchThingHere.new(:$thing)
             unless (%!thing_rooms{$thing} // '') eq $!player_location;
+
+        die X::Adventure::NoSuchThingHere.new(:$thing)
+            if %!hidden_things{$thing};
 
         my @events = Adventure::PlayerExamined.new(
             :$thing
@@ -566,6 +574,12 @@ class Adventure::Engine {
         Adventure::PlayerRead.new(:$thing);
     }
 
+    method hide_thing($thing) {
+        my @events = Adventure::ThingHidden.new(:$thing);
+        self!apply($_) for @events;
+        @events;
+    }
+
     method on_try_exit($room, $direction, &hook) {
         %!try_exit_hooks{$room}{$direction} = &hook;
     }
@@ -631,6 +645,9 @@ class Adventure::Engine {
         }
         when Adventure::ThingMadeReadable {
             %!readable_things{.thing} = True;
+        }
+        when Adventure::ThingHidden {
+            %!hidden_things{.thing} = True;
         }
     }
 }
@@ -1290,6 +1307,18 @@ multi MAIN('test') {
                     "There is nothing to read on the ball",
                     '.message attribute';
             };
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('flask', 'chamber');
+        $engine.hide_thing('flask');
+        $engine.place_player('chamber');
+        throws_exception
+            { $engine.examine('flask') },
+            X::Adventure::NoSuchThingHere,
+            'examining a hidden thing (-) cannot because it is hidden';
     }
 
     done;
