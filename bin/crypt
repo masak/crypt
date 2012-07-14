@@ -433,6 +433,9 @@ class Adventure::Engine {
     }
 
     method look() {
+        die X::Adventure::PlayerIsNowhere.new()
+            unless defined $!player_location;
+
         my @events = Adventure::PlayerLooked.new(
             :room($!player_location),
             :exits(%!exits{$!player_location}.keys),
@@ -470,6 +473,9 @@ class Adventure::Engine {
     }
 
     method examine($thing) {
+        die X::Adventure::PlayerIsNowhere.new()
+            unless defined $!player_location;
+
         die X::Adventure::NoSuchThingHere.new(:$thing)
             unless (%!thing_rooms{$thing} // '') eq $!player_location;
 
@@ -485,6 +491,9 @@ class Adventure::Engine {
     }
 
     method open($thing) {
+        die X::Adventure::PlayerIsNowhere.new()
+            unless defined $!player_location;
+
         die X::Adventure::ThingNotOpenable.new(:$thing)
             unless %!openable_things{$thing};
 
@@ -503,6 +512,9 @@ class Adventure::Engine {
     }
 
     method put_thing_in($thing, $in) {
+        die X::Adventure::PlayerIsNowhere.new()
+            unless defined $!player_location;
+
         die X::Adventure::CannotPutInNonContainer.new(:$in)
             unless %!containers{$in};
 
@@ -526,6 +538,9 @@ class Adventure::Engine {
     }
 
     method put_thing_on($thing, $on) {
+        die X::Adventure::PlayerIsNowhere.new()
+            unless defined $!player_location;
+
         die X::Adventure::CannotPutOnNonPlatform.new(:$on)
             unless %!platforms{$on};
 
@@ -542,6 +557,9 @@ class Adventure::Engine {
     }
 
     method read($thing) {
+        die X::Adventure::PlayerIsNowhere.new()
+            unless defined $!player_location;
+
         die X::Adventure::ThingIsNotReadable.new(:$thing)
             unless %!readable_things{$thing};
 
