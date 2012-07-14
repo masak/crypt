@@ -502,6 +502,12 @@ class Adventure::Engine {
         die X::Adventure::PlayerIsNowhere.new()
             unless defined $!player_location;
 
+        die X::Adventure::NoSuchThingHere.new(:$thing)
+            unless (%!thing_rooms{$thing} // '') eq $!player_location;
+
+        die X::Adventure::NoSuchThingHere.new(:$thing)
+            if %!hidden_things{$thing};
+
         die X::Adventure::ThingNotOpenable.new(:$thing)
             unless %!openable_things{$thing};
 
@@ -1319,6 +1325,31 @@ multi MAIN('test') {
             { $engine.examine('flask') },
             X::Adventure::NoSuchThingHere,
             'examining a hidden thing (-) cannot because it is hidden';
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('flask', 'chamber');
+        $engine.make_thing_openable('flask');
+        $engine.hide_thing('flask');
+        $engine.place_player('chamber');
+        throws_exception
+            { $engine.open('flask') },
+            X::Adventure::NoSuchThingHere,
+            'opening a hidden thing (-) cannot because it is hidden';
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('flask', 'chamber');
+        $engine.make_thing_openable('flask');
+        $engine.place_player('bedroom');
+        throws_exception
+            { $engine.open('flask') },
+            X::Adventure::NoSuchThingHere,
+            'opening a thing (-) cannot because it is in another room';
     }
 
     done;
