@@ -305,6 +305,10 @@ class Adventure::PlayerTook does Event {
     has $.thing;
 }
 
+class Adventure::ThingMadeCarryable does Event {
+    has $.thing;
+}
+
 class X::Adventure is Exception {
 }
 
@@ -387,6 +391,15 @@ class X::Adventure::ThingNotReadable is X::Adventure {
     }
 }
 
+class X::Adventure::ThingNotCarryable is X::Adventure {
+    has $.action;
+    has $.thing;
+
+    method message {
+        "You cannot $.action the $.thing"
+    }
+}
+
 class Adventure::Engine {
     my @possible_directions = <
         north south east west
@@ -408,6 +421,7 @@ class Adventure::Engine {
     has %!readable_things;
     has %!hidden_things;
     has %!examine_hooks;
+    has %!carryable_things;
 
     method connect(@rooms, $direction) {
         die X::Adventure::NoSuchDirection.new(:action('connect rooms'), :$direction)
@@ -608,9 +622,15 @@ class Adventure::Engine {
     }
 
     method make_thing_carryable($thing) {
+        my @events = Adventure::ThingMadeCarryable.new(:$thing);
+        self!apply($_) for @events;
+        @events;
     }
 
     method take($thing) {
+        die X::Adventure::ThingNotCarryable.new(:action<take>, :$thing)
+            unless %!carryable_things{$thing};
+
         my @events = Adventure::PlayerTook.new(:$thing);
         self!apply($_) for @events;
         @events;
@@ -691,6 +711,9 @@ class Adventure::Engine {
         }
         when Adventure::ThingUnhidden {
             %!hidden_things{.thing} = False;
+        }
+        when Adventure::ThingMadeCarryable {
+            %!carryable_things{.thing} = True;
         }
     }
 }
@@ -1413,6 +1436,24 @@ multi MAIN('test') {
                 :thing<box>,
             ),
             'taking a thing (+)';
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('table', 'saloon');
+        # don't make table carryable
+        throws_exception
+            { $engine.take('table') },
+            X::Adventure::ThingNotCarryable,
+            'taking a thing (-) it is not carryable',
+            {
+                is .action, 'take', '.action attribute';
+                is .thing, 'table', '.thing attribute';
+                is .message,
+                    "You cannot take the table",
+                    '.message attribute';
+            };
     }
 
     done;
