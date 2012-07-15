@@ -682,9 +682,6 @@ class Adventure::Engine {
     }
 }
 
-class X::Crypt is Exception {
-}
-
 class Crypt::Game {
     has $!engine handles <walk save>;
 
