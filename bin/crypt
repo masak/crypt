@@ -311,6 +311,10 @@ class Adventure::ThingMadeCarryable does Event {
     has $.thing;
 }
 
+class Adventure::PlayerDropped does Event {
+    has $.thing;
+}
+
 class X::Adventure is Exception {
 }
 
@@ -649,6 +653,11 @@ class Adventure::Engine {
             if %!thing_rooms{$thing} eq 'player inventory';
 
         my @events = Adventure::PlayerTook.new(:$thing);
+        self!apply_and_return: @events;
+    }
+
+    method drop($thing) {
+        my @events = Adventure::PlayerDropped.new(:$thing);
         self!apply_and_return: @events;
     }
 
@@ -1541,6 +1550,20 @@ multi MAIN('test') {
                 is .message, "You already have the cup",
                     '.message attribute';
             };
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('cup', 'porch');
+        $engine.make_thing_carryable('cup');
+        $engine.place_player('porch');
+        $engine.take('cup');
+        is $engine.drop('cup'),
+            Adventure::PlayerDropped.new(
+                :thing<cup>,
+            ),
+            'dropping a thing (+)';
     }
 
     done;
