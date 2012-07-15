@@ -405,11 +405,20 @@ class X::Adventure::ThingNotCarryable is X::Adventure {
         "You cannot $.action the $.thing"
     }
 }
+
 class X::Adventure::PlayerAlreadyCarries is X::Adventure {
     has $.thing;
 
     method message {
         "You already have the $.thing"
+    }
+}
+
+class X::Adventure::PlayerDoesNotHave is X::Adventure {
+    has $.thing;
+
+    method message {
+        "You are not carrying the $.thing"
     }
 }
 
@@ -657,6 +666,12 @@ class Adventure::Engine {
     }
 
     method drop($thing) {
+        die X::Adventure::PlayerNowhere.new()
+            unless defined $!player_location;
+
+        die X::Adventure::PlayerDoesNotHave.new(:$thing)
+            unless %!thing_rooms{$thing} eq 'player inventory';
+
         my @events = Adventure::PlayerDropped.new(:$thing);
         self!apply_and_return: @events;
     }
@@ -1564,6 +1579,23 @@ multi MAIN('test') {
                 :thing<cup>,
             ),
             'dropping a thing (+)';
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('cup', 'porch');
+        $engine.make_thing_carryable('cup');
+        $engine.place_player('porch');
+        throws_exception
+            { $engine.drop('cup') },
+            X::Adventure::PlayerDoesNotHave,
+            'dropping a thing (-) player does not have it',
+            {
+                is .thing, 'cup', '.thing attribute';
+                is .message, "You are not carrying the cup",
+                    '.message attribute';
+            };
     }
 
     done;
