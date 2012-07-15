@@ -324,7 +324,7 @@ class X::Adventure::NoExitThere is X::Adventure {
     }
 }
 
-class X::Adventure::PlayerIsNowhere is X::Adventure {
+class X::Adventure::PlayerNowhere is X::Adventure {
     method message {
         "Cannot move because the player isn't anywhere"
     }
@@ -379,7 +379,7 @@ class X::Adventure::CannotPutOnNonPlatform is X::Adventure {
     }
 }
 
-class X::Adventure::ThingIsNotReadable is X::Adventure {
+class X::Adventure::ThingNotReadable is X::Adventure {
     has $.thing;
 
     method message {
@@ -419,7 +419,7 @@ class Adventure::Engine {
     }
 
     method walk($direction) {
-        die X::Adventure::PlayerIsNowhere.new()
+        die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
         my $actual_direction =
@@ -449,7 +449,7 @@ class Adventure::Engine {
     }
 
     method look() {
-        die X::Adventure::PlayerIsNowhere.new()
+        die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
         my @events = Adventure::PlayerLooked.new(
@@ -489,7 +489,7 @@ class Adventure::Engine {
     }
 
     method examine($thing) {
-        die X::Adventure::PlayerIsNowhere.new()
+        die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
         die X::Adventure::NoSuchThingHere.new(:$thing)
@@ -514,7 +514,7 @@ class Adventure::Engine {
     }
 
     method open($thing) {
-        die X::Adventure::PlayerIsNowhere.new()
+        die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
         die X::Adventure::NoSuchThingHere.new(:$thing)
@@ -541,7 +541,7 @@ class Adventure::Engine {
     }
 
     method put_thing_in($thing, $in) {
-        die X::Adventure::PlayerIsNowhere.new()
+        die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
         die X::Adventure::CannotPutInNonContainer.new(:$in)
@@ -567,7 +567,7 @@ class Adventure::Engine {
     }
 
     method put_thing_on($thing, $on) {
-        die X::Adventure::PlayerIsNowhere.new()
+        die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
         die X::Adventure::CannotPutOnNonPlatform.new(:$on)
@@ -586,10 +586,10 @@ class Adventure::Engine {
     }
 
     method read($thing) {
-        die X::Adventure::PlayerIsNowhere.new()
+        die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
-        die X::Adventure::ThingIsNotReadable.new(:$thing)
+        die X::Adventure::ThingNotReadable.new(:$thing)
             unless %!readable_things{$thing};
 
         Adventure::PlayerRead.new(:$thing);
@@ -1339,7 +1339,7 @@ multi MAIN('test') {
         $engine.place_player('library');
         throws_exception
             { $engine.read('ball') },
-            X::Adventure::ThingIsNotReadable,
+            X::Adventure::ThingNotReadable,
             'reading a thing (-) it is not readable',
             {
                 is .thing, 'ball', '.thing attribute';
