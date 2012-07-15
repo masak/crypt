@@ -637,6 +637,9 @@ class Adventure::Engine {
     }
 
     method take($thing) {
+        die X::Adventure::PlayerNowhere.new()
+            unless defined $!player_location;
+
         # XXX: should check if the thing is there
 
         die X::Adventure::ThingNotCarryable.new(:action<take>, :$thing)
@@ -1472,6 +1475,7 @@ multi MAIN('test') {
 
         $engine.place_thing('table', 'saloon');
         # don't make table carryable
+        $engine.place_player('saloon');
         throws_exception
             { $engine.take('table') },
             X::Adventure::ThingNotCarryable,
