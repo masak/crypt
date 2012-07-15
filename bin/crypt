@@ -158,8 +158,7 @@ class Hanoi::Game {
         if $moved_disk eq 'small disk' && $!achievement eq 'unlocked' {
             @events.push(Hanoi::AchievementLocked.new);
         }
-        self!apply($_) for @events;
-        return @events;
+        self!apply_and_return: @events;
     }
 
     method remove($disk) {
@@ -169,8 +168,7 @@ class Hanoi::Game {
         die X::Hanoi::ForbiddenDiskRemoval.new(:$disk)
             unless $disk eq 'tiny disk';
         my @events = Hanoi::DiskRemoved.new(:$disk, :$source);
-        self!apply($_) for @events;
-        return @events;
+        self!apply_and_return: @events;
     }
 
     method add($disk, $target) {
@@ -186,8 +184,7 @@ class Hanoi::Game {
            && $!achievement eq 'locked' {
             @events.push(Hanoi::AchievementUnlocked.new);
         }
-        self!apply($_) for @events;
-        return @events;
+        self!apply_and_return: @events;
     }
 
     # The method will throw X::Hanoi::CoveredDisk if the disk is not topmost,
@@ -204,6 +201,11 @@ class Hanoi::Game {
             }
         }
         die X::Hanoi::DiskHasBeenRemoved.new(:$disk, :$action);
+    }
+
+    method !apply_and_return(@events) {
+        self!apply($_) for @events;
+        return @events;
     }
 
     # RAKUDO: private multimethods NYI
@@ -428,8 +430,7 @@ class Adventure::Engine {
             unless $direction eq any(@possible_directions);
 
         my @events = Adventure::TwoRoomsConnected.new(:@rooms, :$direction);
-        self!apply($_) for @events;
-        @events;
+        self!apply_and_return: @events;
     }
 
     method walk($direction) {
@@ -458,8 +459,7 @@ class Adventure::Engine {
                 :exits(%!exits{$to}.keys),
             ));
         }
-        self!apply($_) for @events;
-        @events;
+        self!apply_and_return: @events;
     }
 
     method look() {
@@ -470,8 +470,7 @@ class Adventure::Engine {
             :room($!player_location),
             :exits(%!exits{$!player_location}.keys),
         );
-        self!apply($_) for @events;
-        @events;
+        self!apply_and_return: @events;
     }
 
     method place_player($in) {
@@ -482,24 +481,21 @@ class Adventure::Engine {
                 :exits(%!exits{$in}.keys),
             ));
         }
-        self!apply($_) for @events;
-        @events;
+        self!apply_and_return: @events;
     }
 
     method alias_direction($room, $alias, $direction) {
         my @events = Adventure::DirectionAliased.new(
             :$room, :$alias, :$direction
         );
-        self!apply($_) for @events;
-        @events;
+        self!apply_and_return: @events;
     }
 
     method place_thing($thing, $room) {
         my @events = Adventure::ThingPlaced.new(
             :$thing, :$room
         );
-        self!apply($_) for @events;
-        @events;
+        self!apply_and_return: @events;
     }
 
     method examine($thing) {
@@ -519,8 +515,7 @@ class Adventure::Engine {
             @events.push(&hook());
         }
 
-        self!apply($_) for @events;
-        @events;
+        self!apply_and_return: @events;
     }
 
     method make_thing_openable($thing) {
@@ -544,14 +539,12 @@ class Adventure::Engine {
             if %!open_things{$thing};
 
         my @events = Adventure::PlayerOpened.new(:$thing);
-        self!apply($_) for @events;
-        @events;
+        self!apply_and_return: @events;
     }
 
     method make_thing_a_container($thing) {
         my @events = Adventure::ThingMadeAContainer.new(:$thing);
-        self!apply($_) for @events;
-        @events;
+        self!apply_and_return: @events;
     }
 
     method put_thing_in($thing, $in) {
@@ -582,8 +575,7 @@ class Adventure::Engine {
 
     method make_thing_a_platform($thing) {
         my @events = Adventure::ThingMadeAPlatform.new(:$thing);
-        self!apply($_) for @events;
-        @events;
+        self!apply_and_return: @events;
     }
 
     method put_thing_on($thing, $on) {
@@ -607,8 +599,7 @@ class Adventure::Engine {
 
     method make_thing_readable($thing) {
         my @events = Adventure::ThingMadeReadable.new(:$thing);
-        self!apply($_) for @events;
-        @events;
+        self!apply_and_return: @events;
     }
 
     method read($thing) {
@@ -625,20 +616,17 @@ class Adventure::Engine {
 
     method hide_thing($thing) {
         my @events = Adventure::ThingHidden.new(:$thing);
-        self!apply($_) for @events;
-        @events;
+        self!apply_and_return: @events;
     }
 
     method unhide_thing($thing) {
         my @events = Adventure::ThingUnhidden.new(:$thing);
-        self!apply($_) for @events;
-        @events;
+        self!apply_and_return: @events;
     }
 
     method make_thing_carryable($thing) {
         my @events = Adventure::ThingMadeCarryable.new(:$thing);
-        self!apply($_) for @events;
-        @events;
+        self!apply_and_return: @events;
     }
 
     method take($thing) {
@@ -648,8 +636,7 @@ class Adventure::Engine {
             unless %!carryable_things{$thing};
 
         my @events = Adventure::PlayerTook.new(:$thing);
-        self!apply($_) for @events;
-        @events;
+        self!apply_and_return: @events;
     }
 
     method on_try_exit($room, $direction, &hook) {
@@ -687,6 +674,11 @@ class Adventure::Engine {
         %opposites.push( %opposites.invert );
 
         %opposites{$direction};
+    }
+
+    method !apply_and_return(@events) {
+        self!apply($_) for @events;
+        return @events;
     }
 
     # RAKUDO: private multimethods NYI
