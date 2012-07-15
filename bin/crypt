@@ -558,6 +558,9 @@ class Adventure::Engine {
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
+        # XXX: should check if the first thing is there
+        # XXX: should check if the second thing is there
+
         die X::Adventure::ThingNotCarryable.new(:action<put>, :$thing)
             unless %!carryable_things{$thing};
 
@@ -587,6 +590,9 @@ class Adventure::Engine {
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
+        # XXX: should check if the first thing is there
+        # XXX: should check if the second thing is there
+
         die X::Adventure::ThingNotCarryable.new(:action<put>, :$thing)
             unless %!carryable_things{$thing};
 
@@ -608,6 +614,8 @@ class Adventure::Engine {
     method read($thing) {
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
+
+        # XXX: should check if the thing is there
 
         die X::Adventure::ThingNotReadable.new(:$thing)
             unless %!readable_things{$thing};
@@ -634,6 +642,8 @@ class Adventure::Engine {
     }
 
     method take($thing) {
+        # XXX: should check if the thing is there
+
         die X::Adventure::ThingNotCarryable.new(:action<take>, :$thing)
             unless %!carryable_things{$thing};
 
