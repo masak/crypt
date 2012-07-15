@@ -763,6 +763,9 @@ class Adventure::Engine {
         when Adventure::PlayerTook {
             %!thing_rooms{.thing} = 'player inventory';
         }
+        when Adventure::PlayerDropped {
+            %!thing_rooms{.thing} = $!player_location;
+        }
     }
 }
 
@@ -1596,6 +1599,21 @@ multi MAIN('test') {
                 is .message, "You are not carrying the cup",
                     '.message attribute';
             };
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('box', 'saloon');
+        $engine.make_thing_carryable('box');
+        $engine.place_player('saloon');
+        $engine.take('box');
+        $engine.drop('box');
+        is $engine.take('box'),
+            Adventure::PlayerTook.new(
+                :thing<box>,
+            ),
+            'taking a thing (+) take, drop, take';
     }
 
     done;
