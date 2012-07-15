@@ -558,6 +558,9 @@ class Adventure::Engine {
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
+        die X::Adventure::ThingNotCarryable.new(:action<put>, :$thing)
+            unless %!carryable_things{$thing};
+
         die X::Adventure::CannotPutInNonContainer.new(:$in)
             unless %!containers{$in};
 
@@ -583,6 +586,9 @@ class Adventure::Engine {
     method put_thing_on($thing, $on) {
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
+
+        die X::Adventure::ThingNotCarryable.new(:action<put>, :$thing)
+            unless %!carryable_things{$thing};
 
         die X::Adventure::CannotPutOnNonPlatform.new(:$on)
             unless %!platforms{$on};
@@ -1218,8 +1224,9 @@ multi MAIN('test') {
         my $engine = Adventure::Engine.new();
 
         $engine.place_thing('box', 'street');
-        $engine.place_thing('doll', 'street');
         $engine.make_thing_a_container('box');
+        $engine.place_thing('doll', 'street');
+        $engine.make_thing_carryable('doll');
         $engine.place_player('street');
         is $engine.put_thing_in('doll', 'box'),
             Adventure::PlayerPutIn.new(
@@ -1233,8 +1240,9 @@ multi MAIN('test') {
         my $engine = Adventure::Engine.new();
 
         $engine.place_thing('brick', 'street');
-        $engine.place_thing('doll', 'street');
         # don't make brick a container
+        $engine.place_thing('doll', 'street');
+        $engine.make_thing_carryable('doll');
         $engine.place_player('street');
         throws_exception
             { $engine.put_thing_in('doll', 'brick') },
@@ -1252,9 +1260,10 @@ multi MAIN('test') {
         my $engine = Adventure::Engine.new();
 
         $engine.place_thing('crate', 'street');
-        $engine.place_thing('doll', 'street');
         $engine.make_thing_a_container('crate');
         $engine.make_thing_openable('crate');
+        $engine.place_thing('doll', 'street');
+        $engine.make_thing_carryable('doll');
         $engine.place_player('street');
         is $engine.put_thing_in('doll', 'crate'),
             [
@@ -1274,6 +1283,7 @@ multi MAIN('test') {
 
         $engine.place_thing('box', 'street');
         $engine.make_thing_a_container('box');
+        $engine.make_thing_carryable('box');
         $engine.place_player('street');
         throws_exception
             { $engine.put_thing_in('box', 'box') },
@@ -1292,8 +1302,9 @@ multi MAIN('test') {
         my $engine = Adventure::Engine.new();
 
         $engine.place_thing('surface', 'street');
-        $engine.place_thing('doll', 'street');
         $engine.make_thing_a_platform('surface');
+        $engine.place_thing('doll', 'street');
+        $engine.make_thing_carryable('doll');
         $engine.place_player('street');
         is $engine.put_thing_on('doll', 'surface'),
             Adventure::PlayerPutOn.new(
@@ -1307,8 +1318,9 @@ multi MAIN('test') {
         my $engine = Adventure::Engine.new();
 
         $engine.place_thing('hole', 'street');
-        $engine.place_thing('doll', 'street');
         # don't make hole a platform
+        $engine.place_thing('doll', 'street');
+        $engine.make_thing_carryable('doll');
         $engine.place_player('street');
         throws_exception
             { $engine.put_thing_on('doll', 'hole') },
@@ -1327,6 +1339,7 @@ multi MAIN('test') {
 
         $engine.place_thing('surface', 'street');
         $engine.make_thing_a_platform('surface');
+        $engine.make_thing_carryable('surface');
         $engine.place_player('street');
         throws_exception
             { $engine.put_thing_on('surface', 'surface') },
@@ -1453,6 +1466,42 @@ multi MAIN('test') {
                 is .message,
                     "You cannot take the table",
                     '.message attribute';
+            };
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('box', 'street');
+        $engine.make_thing_a_container('box');
+        $engine.place_thing('doll', 'street');
+        # don't make doll carryable
+        $engine.place_player('street');
+        throws_exception
+            { $engine.put_thing_in('doll', 'box') },
+            X::Adventure::ThingNotCarryable,
+            'putting a thing inside another (-) not carryable',
+            {
+                is .action, 'put', '.action attribute';
+                is .thing, 'doll', '.thing attribute';
+            };
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('surface', 'street');
+        $engine.make_thing_a_platform('surface');
+        $engine.place_thing('doll', 'street');
+        # don't make doll carryable
+        $engine.place_player('street');
+        throws_exception
+            { $engine.put_thing_on('doll', 'surface') },
+            X::Adventure::ThingNotCarryable,
+            'putting a thing on another (-) not carryable',
+            {
+                is .action, 'put', '.action attribute';
+                is .thing, 'doll', '.thing attribute';
             };
     }
 
