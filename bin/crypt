@@ -401,6 +401,13 @@ class X::Adventure::ThingNotCarryable is X::Adventure {
         "You cannot $.action the $.thing"
     }
 }
+class X::Adventure::PlayerAlreadyCarries is X::Adventure {
+    has $.thing;
+
+    method message {
+        "You already have the $.thing"
+    }
+}
 
 class Adventure::Engine {
     my @possible_directions = <
@@ -635,6 +642,9 @@ class Adventure::Engine {
         die X::Adventure::ThingNotCarryable.new(:action<take>, :$thing)
             unless %!carryable_things{$thing};
 
+        die X::Adventure::PlayerAlreadyCarries.new(:$thing)
+            if %!thing_rooms{$thing} eq 'player inventory';
+
         my @events = Adventure::PlayerTook.new(:$thing);
         self!apply_and_return: @events;
     }
@@ -722,6 +732,9 @@ class Adventure::Engine {
         }
         when Adventure::ThingMadeCarryable {
             %!carryable_things{.thing} = True;
+        }
+        when Adventure::PlayerTook {
+            %!thing_rooms{.thing} = 'player inventory';
         }
     }
 }
@@ -1446,6 +1459,7 @@ multi MAIN('test') {
 
         $engine.place_thing('box', 'saloon');
         $engine.make_thing_carryable('box');
+        $engine.place_player('saloon');
         is $engine.take('box'),
             Adventure::PlayerTook.new(
                 :thing<box>,
@@ -1504,6 +1518,24 @@ multi MAIN('test') {
             {
                 is .action, 'put', '.action attribute';
                 is .thing, 'doll', '.thing attribute';
+            };
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('cup', 'porch');
+        $engine.make_thing_carryable('cup');
+        $engine.place_player('porch');
+        $engine.take('cup');
+        throws_exception
+            { $engine.take('cup') },
+            X::Adventure::PlayerAlreadyCarries,
+            'taking a thing (-) player already has',
+            {
+                is .thing, 'cup', '.thing attribute';
+                is .message, "You already have the cup",
+                    '.message attribute';
             };
     }
 
