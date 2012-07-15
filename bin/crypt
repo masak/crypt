@@ -301,6 +301,10 @@ class Adventure::ThingUnhidden does Event {
     has $.thing;
 }
 
+class Adventure::PlayerTook does Event {
+    has $.thing;
+}
+
 class X::Adventure is Exception {
 }
 
@@ -599,6 +603,15 @@ class Adventure::Engine {
 
     method unhide_thing($thing) {
         my @events = Adventure::ThingUnhidden.new(:$thing);
+        self!apply($_) for @events;
+        @events;
+    }
+
+    method make_thing_carryable($thing) {
+    }
+
+    method take($thing) {
+        my @events = Adventure::PlayerTook.new(:$thing);
         self!apply($_) for @events;
         @events;
     }
@@ -1388,6 +1401,18 @@ multi MAIN('test') {
                 :thing<door>,
             ),
             'opening a thing (+) unhidden by a callback';
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('box', 'saloon');
+        $engine.make_thing_carryable('box');
+        is $engine.take('box'),
+            Adventure::PlayerTook.new(
+                :thing<box>,
+            ),
+            'taking a thing (+)';
     }
 
     done;
