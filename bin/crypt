@@ -10,7 +10,7 @@ role Event {
 
         sprintf '%s[%s]',
             self.^name,
-            map &attrpair, self.^attributes;
+            ~map &attrpair, self.^attributes;
     }
 }
 
