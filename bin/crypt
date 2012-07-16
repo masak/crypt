@@ -476,7 +476,7 @@ class Adventure::Engine {
         unless %!seen_room{$to}++ {
             @events.push(Adventure::PlayerLooked.new(
                 :room($to),
-                :exits(%!exits{$to}.keys),
+                :exits((%!exits{$to} // ()).keys),
             ));
         }
         self!apply_and_return: @events;
@@ -488,7 +488,7 @@ class Adventure::Engine {
 
         my @events = Adventure::PlayerLooked.new(
             :room($!player_location),
-            :exits(%!exits{$!player_location}.keys),
+            :exits((%!exits{$!player_location} // ()).keys),
         );
         self!apply_and_return: @events;
     }
@@ -498,7 +498,7 @@ class Adventure::Engine {
         unless %!seen_room{$in}++ {
             @events.push(Adventure::PlayerLooked.new(
                 :room($in),
-                :exits(%!exits{$in}.keys),
+                :exits((%!exits{$in} // ()).keys),
             ));
         }
         self!apply_and_return: @events;
