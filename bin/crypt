@@ -316,6 +316,10 @@ class Adventure::PlayerDropped does Event {
     has $.thing;
 }
 
+class Adventure::ThingMadeImplicit does Event {
+    has $.thing;
+}
+
 class X::Adventure is Exception {
 }
 
@@ -445,6 +449,7 @@ class Adventure::Engine {
     has %!hidden_things;
     has %!examine_hooks;
     has %!carryable_things;
+    has %!implicit_things;
 
     method connect(@rooms, $direction) {
         die X::Adventure::NoSuchDirection.new(:action('connect rooms'), :$direction)
@@ -454,9 +459,12 @@ class Adventure::Engine {
         self!apply_and_return: @events;
     }
 
-    method !things_here {
+    method !explicit_things_here {
         return unless $!player_location;
-        return %!thing_rooms.grep({ .value eq $!player_location })>>.key;
+        sub is_here_and_explicit($_) {
+            %!thing_rooms{$_} eq $!player_location && !%!implicit_things{$_}
+        }
+        return %!thing_rooms.keys.grep(&is_here_and_explicit);
     }
 
     method walk($direction) {
@@ -483,7 +491,7 @@ class Adventure::Engine {
             @events.push(Adventure::PlayerLooked.new(
                 :room($to),
                 :exits((%!exits{$to} // ()).keys),
-                :things(self!things_here),
+                :things(self!explicit_things_here),
             ));
         }
         self!apply_and_return: @events;
@@ -496,7 +504,7 @@ class Adventure::Engine {
         my @events = Adventure::PlayerLooked.new(
             :room($!player_location),
             :exits((%!exits{$!player_location} // ()).keys),
-            :things(self!things_here),
+            :things(self!explicit_things_here),
         );
         self!apply_and_return: @events;
     }
@@ -507,7 +515,7 @@ class Adventure::Engine {
             @events.push(Adventure::PlayerLooked.new(
                 :room($in),
                 :exits((%!exits{$in} // ()).keys),
-                :things(self!things_here),
+                :things(self!explicit_things_here),
             ));
         }
         self!apply_and_return: @events;
@@ -685,6 +693,11 @@ class Adventure::Engine {
         self!apply_and_return: @events;
     }
 
+    method make_thing_implicit($thing) {
+        my @events = Adventure::ThingMadeImplicit.new(:$thing);
+        self!apply_and_return: @events;
+    }
+
     method on_try_exit($room, $direction, &hook) {
         %!try_exit_hooks{$room}{$direction} = &hook;
     }
@@ -774,6 +787,9 @@ class Adventure::Engine {
         }
         when Adventure::PlayerDropped {
             %!thing_rooms{.thing} = $!player_location;
+        }
+        when Adventure::ThingMadeImplicit {
+            %!implicit_things{.thing} = True;
         }
     }
 }
@@ -1636,6 +1652,19 @@ multi MAIN('test') {
                 :things<dog>,
             ),
             'looking at the room, explicit thing';
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('fog', 'street');
+        $engine.make_thing_implicit('fog');
+        $engine.place_player('street');
+        is $engine.look(),
+            Adventure::PlayerLooked.new(
+                :room<street>,
+            ),
+            'looking at the room, implicit thing';
     }
 
     done;
