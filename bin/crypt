@@ -948,7 +948,9 @@ multi MAIN() {
                 my @req_args = %commands{$verb}.list;
                 when @args != @req_args {
                     say "You passed in {+@args} arguments, but $verb requires {+@req_args}.";
-                    say "The arguments are {map { "<$_>" }, @req_args}.";
+                    if @req_args {
+                        say "The arguments are {map { "<$_>" }, @req_args}.";
+                    }
                 }
                 my @events = $game."$verb"(|@args);
                 for @events {
