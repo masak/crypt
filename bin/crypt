@@ -464,16 +464,25 @@ class Adventure::Engine {
         self!apply_and_return: @events;
     }
 
+    method !contents_of($thing) {
+        return %!thing_rooms.grep({.value eq "contents:$thing"})>>.key;
+    }
+
     method !explicit_things_at($location) {
-        return unless $!player_location;
         sub is_here_and_explicit($_) {
             %!thing_rooms{$_} eq $location && !%!implicit_things{$_}
         }
-        return %!thing_rooms.keys.grep(&is_here_and_explicit);
-    }
 
-    method !contents_of($thing) {
-        return %!thing_rooms.grep({.value eq "contents:$thing"})>>.key;
+        return unless $!player_location;
+        return gather for %!thing_rooms.keys -> $thing {
+            next unless is_here_and_explicit($thing);
+            if %!open_things{$thing} && self!contents_of($thing) {
+                take $thing => self!explicit_things_at("contents:$thing");
+            }
+            else {
+                take $thing;
+            }
+        }
     }
 
     method walk($direction) {
@@ -1703,6 +1712,19 @@ multi MAIN('test') {
                 ),
             ],
             'opening the car';
+    }
+
+    {
+        my $game = Crypt::Game.new();
+
+        $game.open('car');
+        is $game.look(),
+            Adventure::PlayerLooked.new(
+                :room<clearing>,
+                :exits<east>,
+                :things(car => <flashlight rope>),
+            ),
+            'looking inside the car';
     }
 
     done;
