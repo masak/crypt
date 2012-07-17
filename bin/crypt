@@ -320,6 +320,11 @@ class Adventure::ThingMadeImplicit does Event {
     has $.thing;
 }
 
+class Adventure::ContentsRevealed does Event {
+    has $.container;
+    has @.contents;
+}
+
 class X::Adventure is Exception {
 }
 
@@ -467,6 +472,10 @@ class Adventure::Engine {
         return %!thing_rooms.keys.grep(&is_here_and_explicit);
     }
 
+    method !contents_of($thing) {
+        return %!thing_rooms.grep({.value eq "contents:$thing"})>>.key;
+    }
+
     method walk($direction) {
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
@@ -576,6 +585,14 @@ class Adventure::Engine {
             if %!open_things{$thing};
 
         my @events = Adventure::PlayerOpened.new(:$thing);
+        my @contents = self!contents_of($thing);
+        if @contents {
+            @events.push(
+                Adventure::ContentsRevealed.new(
+                    :container($thing), :@contents
+                )
+            );
+        }
         self!apply_and_return: @events;
     }
 
@@ -795,7 +812,7 @@ class Adventure::Engine {
 }
 
 class Crypt::Game {
-    has $!engine handles <walk save>;
+    has $!engine handles <walk save open>;
 
     submethod BUILD() {
         $!engine = Adventure::Engine.new();
@@ -812,6 +829,9 @@ class Crypt::Game {
                 False;
             });
             .place_thing('car', 'clearing');
+            .place_thing('flashlight', 'contents:car');
+            .place_thing('rope', 'contents:car');
+            .make_thing_openable('car');
             .place_player('clearing');
         }
     }
@@ -1667,6 +1687,22 @@ multi MAIN('test') {
                 :room<street>,
             ),
             'looking at the room, implicit thing';
+    }
+
+    {
+        my $game = Crypt::Game.new();
+
+        is $game.open('car'),
+            [
+                Adventure::PlayerOpened.new(
+                    :thing<car>,
+                ),
+                Adventure::ContentsRevealed.new(
+                    :container<car>,
+                    :contents<flashlight rope>,
+                ),
+            ],
+            'opening the car';
     }
 
     done;
