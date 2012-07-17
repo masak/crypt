@@ -962,6 +962,10 @@ multi MAIN() {
                         }
                     }
                     when Adventure::PlayerExamined { say %descriptions{.thing} }
+                    when Adventure::ContentsRevealed {
+                        my $contents = join " and ", map { "a $_" }, .contents;
+                        say "Opening the {.container} reveals $contents.";
+                    }
                 }
                 CATCH {
                     when X::Adventure { say .message, '.' }
