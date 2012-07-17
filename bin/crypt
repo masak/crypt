@@ -459,10 +459,10 @@ class Adventure::Engine {
         self!apply_and_return: @events;
     }
 
-    method !explicit_things_here {
+    method !explicit_things_at($location) {
         return unless $!player_location;
         sub is_here_and_explicit($_) {
-            %!thing_rooms{$_} eq $!player_location && !%!implicit_things{$_}
+            %!thing_rooms{$_} eq $location && !%!implicit_things{$_}
         }
         return %!thing_rooms.keys.grep(&is_here_and_explicit);
     }
@@ -491,7 +491,7 @@ class Adventure::Engine {
             @events.push(Adventure::PlayerLooked.new(
                 :room($to),
                 :exits((%!exits{$to} // ()).keys),
-                :things(self!explicit_things_here),
+                :things(self!explicit_things_at($to)),
             ));
         }
         self!apply_and_return: @events;
@@ -504,7 +504,7 @@ class Adventure::Engine {
         my @events = Adventure::PlayerLooked.new(
             :room($!player_location),
             :exits((%!exits{$!player_location} // ()).keys),
-            :things(self!explicit_things_here),
+            :things(self!explicit_things_at($!player_location)),
         );
         self!apply_and_return: @events;
     }
@@ -515,7 +515,7 @@ class Adventure::Engine {
             @events.push(Adventure::PlayerLooked.new(
                 :room($in),
                 :exits((%!exits{$in} // ()).keys),
-                :things(self!explicit_things_here),
+                :things(self!explicit_things_at($in)),
             ));
         }
         self!apply_and_return: @events;
