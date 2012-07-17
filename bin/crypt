@@ -811,6 +811,7 @@ class Crypt::Game {
                 say "You try to walk past the fire, but it's too hot!";
                 False;
             });
+            .place_thing('car', 'clearing');
             .place_player('clearing');
         }
     }
@@ -1078,6 +1079,7 @@ multi MAIN('test') {
             Adventure::PlayerLooked.new(
                 :room<clearing>,
                 :exits<east>,
+                :things<car>,
             ),
             'looking at the room';
     }
