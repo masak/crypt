@@ -821,7 +821,7 @@ class Adventure::Engine {
 }
 
 class Crypt::Game {
-    has $!engine handles <walk save open>;
+    has $!engine handles <walk save open examine>;
 
     submethod BUILD() {
         $!engine = Adventure::Engine.new();
@@ -961,6 +961,7 @@ multi MAIN() {
                             say "You can go {join ' and ', .exits}.";
                         }
                     }
+                    when Adventure::PlayerExamined { say %descriptions{.thing} }
                 }
                 CATCH {
                     when X::Adventure { say .message, '.' }
