@@ -455,6 +455,7 @@ class Adventure::Engine {
     has %!examine_hooks;
     has %!carryable_things;
     has %!implicit_things;
+    has %!open_hooks;
 
     method connect(@rooms, $direction) {
         die X::Adventure::NoSuchDirection.new(:action('connect rooms'), :$direction)
@@ -615,6 +616,9 @@ class Adventure::Engine {
                 )
             );
         }
+        if %!open_hooks{$thing} -> &hook {
+            @events.push(&hook());
+        }
         self!apply_and_return: @events;
     }
 
@@ -746,6 +750,10 @@ class Adventure::Engine {
         %!examine_hooks{$thing} = &hook;
     }
 
+    method on_open($thing, &hook) {
+        %!open_hooks{$thing} = &hook;
+    }
+
     my class Save {
         has @.events;
     }
@@ -871,11 +879,9 @@ class Crypt::Game {
             .place_thing('door', 'hill');
             .make_thing_openable('door');
             .hide_thing('door');
-            .on_examine('grass', { $!engine.unhide_thing('door') });
-            .on_examine('bushes', { $!engine.unhide_thing('door') });
-
-            # yes, this is cheat. will fix in the next commit.
-            .connect(<hill chamber>, 'south');
+            .on_examine('grass', { .unhide_thing('door') });
+            .on_examine('bushes', { .unhide_thing('door') });
+            .on_open('door', { .connect(<hill chamber>, 'south') });
 
             .place_player('clearing');
         }
@@ -1848,7 +1854,7 @@ multi MAIN('test') {
 
         $game.walk('east');
         $game.examine('grass');
-        is $game.open('door'),
+        is $game.open('door')[0],
             Adventure::PlayerOpened.new(
                 :thing<door>,
             ),
@@ -1870,7 +1876,7 @@ multi MAIN('test') {
 
         $game.walk('east');
         $game.examine('bushes');
-        is $game.open('door'),
+        is $game.open('door')[0],
             Adventure::PlayerOpened.new(
                 :thing<door>,
             ),
