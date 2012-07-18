@@ -864,10 +864,13 @@ class Crypt::Game {
             # Things on hill
             .place_thing('grass', 'hill');
             .make_thing_implicit('grass');
+            .place_thing('bushes', 'hill');
+            .make_thing_implicit('bushes');
             .place_thing('door', 'hill');
             .make_thing_openable('door');
             .hide_thing('door');
             .on_examine('grass', { $!engine.unhide_thing('door') });
+            .on_examine('bushes', { $!engine.unhide_thing('door') });
 
             .place_player('clearing');
         }
@@ -1855,6 +1858,18 @@ multi MAIN('test') {
             { $game.open('door') },
             X::Adventure::NoSuchThingHere,
             'opening the door (-) without examining the grass';
+    }
+
+    {
+        my $game = Crypt::Game.new();
+
+        $game.walk('east');
+        $game.examine('bushes');
+        is $game.open('door'),
+            Adventure::PlayerOpened.new(
+                :thing<door>,
+            ),
+            'opening the door (+) bushes work too';
     }
 
     done;
