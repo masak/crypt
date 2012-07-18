@@ -1027,6 +1027,7 @@ multi MAIN() {
         }
         say "";
     }
+    say "Thanks for playing.";
 }
 
 multi MAIN('hanoi') {
