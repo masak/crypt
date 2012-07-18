@@ -469,13 +469,14 @@ class Adventure::Engine {
     }
 
     method !explicit_things_at($location) {
-        sub is_here_and_explicit($_) {
-            %!thing_rooms{$_} eq $location && !%!implicit_things{$_}
+        sub here_visible_and_explicit($_) {
+            %!thing_rooms{$_} eq $location
+                && !%!hidden_things{$_} && !%!implicit_things{$_}
         }
 
         return unless $location;
         return gather for %!thing_rooms.keys -> $thing {
-            next unless is_here_and_explicit($thing);
+            next unless here_visible_and_explicit($thing);
             if %!open_things{$thing} && self!contents_of($thing) {
                 take $thing => self!explicit_things_at("contents:$thing");
             }
@@ -865,6 +866,8 @@ class Crypt::Game {
             .make_thing_implicit('grass');
             .place_thing('door', 'hill');
             .make_thing_openable('door');
+            .hide_thing('door');
+            .on_examine('grass', { $!engine.unhide_thing('door') });
 
             .place_player('clearing');
         }
@@ -1841,7 +1844,17 @@ multi MAIN('test') {
             Adventure::PlayerOpened.new(
                 :thing<door>,
             ),
-            'examining the grass and opening the door';
+            'opening the door (+) having examined the grass';
+    }
+
+    {
+        my $game = Crypt::Game.new();
+
+        $game.walk('east');
+        throws_exception
+            { $game.open('door') },
+            X::Adventure::NoSuchThingHere,
+            'opening the door (-) without examining the grass';
     }
 
     done;
