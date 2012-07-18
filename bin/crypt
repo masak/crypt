@@ -821,7 +821,7 @@ class Adventure::Engine {
 }
 
 class Crypt::Game {
-    has $!engine handles <walk save open examine>;
+    has $!engine handles <walk save open examine take>;
 
     submethod BUILD() {
         $!engine = Adventure::Engine.new();
@@ -839,7 +839,9 @@ class Crypt::Game {
             });
             .place_thing('car', 'clearing');
             .place_thing('flashlight', 'contents:car');
+            .make_thing_carryable('flashlight');
             .place_thing('rope', 'contents:car');
+            .make_thing_carryable('rope');
             .make_thing_openable('car');
             .place_player('clearing');
         }
@@ -1732,6 +1734,28 @@ multi MAIN('test') {
                 :things(car => <flashlight rope>),
             ),
             'looking inside the car';
+    }
+
+    {
+        my $game = Crypt::Game.new();
+
+        $game.open('car');
+        is $game.take('flashlight'),
+            Adventure::PlayerTook.new(
+                :thing<flashlight>,
+            ),
+            'taking the flashlight from the car';
+    }
+
+    {
+        my $game = Crypt::Game.new();
+
+        $game.open('car');
+        is $game.take('rope'),
+            Adventure::PlayerTook.new(
+                :thing<rope>,
+            ),
+            'taking the rope from the car';
     }
 
     done;
