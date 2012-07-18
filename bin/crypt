@@ -910,6 +910,7 @@ multi MAIN() {
         say .ucfirst;
         say "";
         say %descriptions{$_};
+        say "There is a car here.";
         say "You can go east.";
         say "";
     }
@@ -949,6 +950,19 @@ multi MAIN() {
                         say ucfirst .room;
                         say "";
                         say %descriptions{.room};
+                        for .things -> $thing {
+                            if $thing ~~ Pair {
+                                say "There is a $thing.key() here.";
+                                # XXX: Needs to work for nested calls, too
+                                say "The $thing.key() contains:";
+                                for $thing.value.list -> $containee {
+                                    say "  A $containee.";
+                                }
+                            }
+                            else {
+                                say "There is a $thing here.";
+                            }
+                        }
                         if .exits {
                             say "You can go {join ' and ', .exits}.";
                         }
@@ -976,6 +990,19 @@ multi MAIN() {
                     when Adventure::PlayerWalked { say ucfirst .to; say "" }
                     when Adventure::PlayerLooked {
                         say %descriptions{.room};
+                        for .things -> $thing {
+                            if $thing ~~ Pair {
+                                say "There is a $thing.key() here.";
+                                # XXX: Needs to work for nested calls, too
+                                say "The $thing.key() contains:";
+                                for $thing.value.list -> $containee {
+                                    say "  A $containee.";
+                                }
+                            }
+                            else {
+                                say "There is a $thing here.";
+                            }
+                        }
                         if .exits {
                             say "You can go {join ' and ', .exits}.";
                         }
