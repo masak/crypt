@@ -1012,6 +1012,9 @@ multi MAIN() {
                         my $contents = join " and ", map { "a $_" }, .contents;
                         say "Opening the {.container} reveals $contents.";
                     }
+                    when Adventure::PlayerTook {
+                        say "You take the {.thing}.";
+                    }
                 }
                 CATCH {
                     when X::Adventure { say .message, '.' }
