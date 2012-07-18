@@ -486,13 +486,9 @@ class Adventure::Engine {
     }
 
     method !is_thing_in($sought, $location) {
-        sub is_here_and_explicit($_) {
-            %!thing_rooms{$_} eq $location && !%!implicit_things{$_}
-        }
-
         return unless $location;
         for %!thing_rooms.keys -> $thing {
-            next unless is_here_and_explicit($thing);
+            next unless %!thing_rooms{$thing} eq $location;
             return True if $thing eq $sought;
             if %!open_things{$thing} && self!contents_of($thing) {
                 return True if self!is_thing_in($sought, "contents:$thing");
@@ -844,6 +840,7 @@ class Crypt::Game {
         $!engine = Adventure::Engine.new();
 
         given $!engine {
+            # Rooms
             .connect(<clearing hill>, 'east');
             .alias_direction('hill', 'in', 'south');
             .alias_direction('chamber', 'out', 'north');
@@ -854,12 +851,21 @@ class Crypt::Game {
                 say "You try to walk past the fire, but it's too hot!";
                 False;
             });
+
+            # Things in clearing
             .place_thing('car', 'clearing');
             .place_thing('flashlight', 'contents:car');
             .make_thing_carryable('flashlight');
             .place_thing('rope', 'contents:car');
             .make_thing_carryable('rope');
             .make_thing_openable('car');
+
+            # Things on hill
+            .place_thing('grass', 'hill');
+            .make_thing_implicit('grass');
+            .place_thing('door', 'hill');
+            .make_thing_openable('door');
+
             .place_player('clearing');
         }
     }
@@ -1824,6 +1830,18 @@ multi MAIN('test') {
                 :thing<flashlight>,
             ),
             'examining the flashlight in the car';
+    }
+
+    {
+        my $game = Crypt::Game.new();
+
+        $game.walk('east');
+        $game.examine('grass');
+        is $game.open('door'),
+            Adventure::PlayerOpened.new(
+                :thing<door>,
+            ),
+            'examining the grass and opening the door';
     }
 
     done;
