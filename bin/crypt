@@ -846,6 +846,8 @@ class Crypt::Game {
             .alias_direction('hill', 'in', 'south');
             .alias_direction('chamber', 'out', 'north');
             .connect(<chamber hall>, 'south');
+            .alias_direction('chamber', 'in', 'south');
+            .alias_direction('cave', 'out', 'north');
             .connect(<hall cave>, 'down');
             .connect(<cave crypt>, 'northwest');
             .on_try_exit('cave', 'northwest', {
@@ -871,6 +873,9 @@ class Crypt::Game {
             .hide_thing('door');
             .on_examine('grass', { $!engine.unhide_thing('door') });
             .on_examine('bushes', { $!engine.unhide_thing('door') });
+
+            # yes, this is cheat. will fix in the next commit.
+            .connect(<hill chamber>, 'south');
 
             .place_player('clearing');
         }
@@ -1870,6 +1875,25 @@ multi MAIN('test') {
                 :thing<door>,
             ),
             'opening the door (+) bushes work too';
+    }
+
+    {
+        my $game = Crypt::Game.new();
+
+        $game.walk('east');
+        $game.examine('bushes');
+        $game.open('door');
+        is $game.walk('in'),
+            [
+                Adventure::PlayerWalked.new(
+                    :to<chamber>,
+                ),
+                Adventure::PlayerLooked.new(
+                    :room<chamber>,
+                    :exits<south north>,
+                ),
+            ],
+            'walking into the hill (+) after opening the door';
     }
 
     done;
