@@ -574,7 +574,7 @@ class Adventure::Engine {
             unless defined $!player_location;
 
         die X::Adventure::NoSuchThingHere.new(:$thing)
-            unless (%!thing_rooms{$thing} // '') eq $!player_location;
+            unless self!is_thing_in($thing, $!player_location);
 
         die X::Adventure::NoSuchThingHere.new(:$thing)
             if %!hidden_things{$thing};
@@ -1782,6 +1782,17 @@ multi MAIN('test') {
             { $game.take('flashlight') },
             X::Adventure::NoSuchThingHere,
             'taking the flashlight from the car (-) car not open';
+    }
+
+    {
+        my $game = Crypt::Game.new();
+
+        $game.open('car');
+        is $game.examine('flashlight'),
+            Adventure::PlayerExamined.new(
+                :thing<flashlight>,
+            ),
+            'examining the flashlight in the car';
     }
 
     done;
