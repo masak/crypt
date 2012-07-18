@@ -473,7 +473,7 @@ class Adventure::Engine {
             %!thing_rooms{$_} eq $location && !%!implicit_things{$_}
         }
 
-        return unless $!player_location;
+        return unless $location;
         return gather for %!thing_rooms.keys -> $thing {
             next unless is_here_and_explicit($thing);
             if %!open_things{$thing} && self!contents_of($thing) {
@@ -483,6 +483,22 @@ class Adventure::Engine {
                 take $thing;
             }
         }
+    }
+
+    method !is_thing_in($sought, $location) {
+        sub is_here_and_explicit($_) {
+            %!thing_rooms{$_} eq $location && !%!implicit_things{$_}
+        }
+
+        return unless $location;
+        for %!thing_rooms.keys -> $thing {
+            next unless is_here_and_explicit($thing);
+            return True if $thing eq $sought;
+            if %!open_things{$thing} && self!contents_of($thing) {
+                return True if self!is_thing_in($sought, "contents:$thing");
+            }
+        }
+        return False;
     }
 
     method walk($direction) {
@@ -696,13 +712,14 @@ class Adventure::Engine {
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
-        # XXX: should check if the thing is there
+        die X::Adventure::PlayerAlreadyCarries.new(:$thing)
+            if %!thing_rooms{$thing} eq 'player inventory';
+
+        die X::Adventure::NoSuchThingHere.new(:$thing)
+            unless self!is_thing_in($thing, $!player_location);
 
         die X::Adventure::ThingNotCarryable.new(:action<take>, :$thing)
             unless %!carryable_things{$thing};
-
-        die X::Adventure::PlayerAlreadyCarries.new(:$thing)
-            if %!thing_rooms{$thing} eq 'player inventory';
 
         my @events = Adventure::PlayerTook.new(:$thing);
         self!apply_and_return: @events;
@@ -1744,7 +1761,7 @@ multi MAIN('test') {
             Adventure::PlayerTook.new(
                 :thing<flashlight>,
             ),
-            'taking the flashlight from the car';
+            'taking the flashlight from the car (+)';
     }
 
     {
@@ -1755,7 +1772,16 @@ multi MAIN('test') {
             Adventure::PlayerTook.new(
                 :thing<rope>,
             ),
-            'taking the rope from the car';
+            'taking the rope from the car (+)';
+    }
+
+    {
+        my $game = Crypt::Game.new();
+
+        throws_exception
+            { $game.take('flashlight') },
+            X::Adventure::NoSuchThingHere,
+            'taking the flashlight from the car (-) car not open';
     }
 
     done;
