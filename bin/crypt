@@ -714,7 +714,7 @@ class Adventure::Engine {
             unless defined $!player_location;
 
         die X::Adventure::PlayerAlreadyCarries.new(:$thing)
-            if %!thing_rooms{$thing} eq 'player inventory';
+            if (%!thing_rooms{$thing} // '') eq 'player inventory';
 
         die X::Adventure::NoSuchThingHere.new(:$thing)
             unless self!is_thing_in($thing, $!player_location);
@@ -882,6 +882,11 @@ class Crypt::Game {
             .on_examine('grass', { .unhide_thing('door') });
             .on_examine('bushes', { .unhide_thing('door') });
             .on_open('door', { .connect(<hill chamber>, 'south') });
+            .place_thing('trees', 'hill');
+            .make_thing_implicit('trees');
+            .place_thing('leaves', 'hill');
+            .make_thing_implicit('leaves');
+            .make_thing_carryable('leaves');
 
             .place_player('clearing');
         }
@@ -1920,6 +1925,17 @@ multi MAIN('test') {
                 ),
             ],
             'walking into the hill (+) after opening the door';
+    }
+
+    {
+        my $game = Crypt::Game.new();
+
+        $game.walk('east');
+        is $game.take('leaves'),
+            Adventure::PlayerTook.new(
+                :thing<leaves>,
+            ),
+            'taking the leaves';
     }
 
     done;
