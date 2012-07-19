@@ -655,7 +655,7 @@ class Adventure::Engine {
         }
         @events.push(Adventure::PlayerPutIn.new(:$thing, :$in));
         if %!put_hooks{$in} -> &hook {
-            @events.push(&hook($thing));
+            @events.push($_) when Event for &hook($thing);
         }
 
         self!apply_and_return: @events;
@@ -684,7 +684,7 @@ class Adventure::Engine {
 
         my @events = Adventure::PlayerPutOn.new(:$thing, :$on);
         if %!put_hooks{$on} -> &hook {
-            @events.push(&hook($thing));
+            @events.push($_) when Event for &hook($thing);
         }
         self!apply_and_return: @events;
     }
@@ -896,7 +896,6 @@ class Crypt::Game {
                 'car',
                 -> $_ {
                     when 'leaves' { $!engine.remark('car-full-of-leaves') }
-                    ();
                 }
             );
 
