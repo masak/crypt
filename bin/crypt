@@ -325,6 +325,10 @@ class Adventure::ContentsRevealed does Event {
     has @.contents;
 }
 
+class Adventure::GameRemarked does Event {
+    has $.remark;
+}
+
 class X::Adventure is Exception {
 }
 
@@ -456,6 +460,7 @@ class Adventure::Engine {
     has %!carryable_things;
     has %!implicit_things;
     has %!open_hooks;
+    has %!put_hooks;
 
     method connect(@rooms, $direction) {
         die X::Adventure::NoSuchDirection.new(:action('connect rooms'), :$direction)
@@ -648,9 +653,12 @@ class Adventure::Engine {
         if %!openable_things{$in} && !%!open_things{$in} {
             @events.push(Adventure::PlayerOpened.new(:thing($in)));
         }
-
         @events.push(Adventure::PlayerPutIn.new(:$thing, :$in));
-        @events;
+        if %!put_hooks{$in} -> &hook {
+            @events.push(&hook($thing));
+        }
+
+        self!apply_and_return: @events;
     }
 
     method make_thing_a_platform($thing) {
@@ -674,7 +682,11 @@ class Adventure::Engine {
         die X::Adventure::YoDawg.new(:relation<on>, :thing($on))
             if $thing eq $on;
 
-        Adventure::PlayerPutOn.new(:$thing, :$on);
+        my @events = Adventure::PlayerPutOn.new(:$thing, :$on);
+        if %!put_hooks{$on} -> &hook {
+            @events.push(&hook($thing));
+        }
+        self!apply_and_return: @events;
     }
 
     method make_thing_readable($thing) {
@@ -737,6 +749,11 @@ class Adventure::Engine {
         self!apply_and_return: @events;
     }
 
+    method remark($remark) {
+        my @events = Adventure::GameRemarked.new(:$remark);
+        self!apply_and_return: @events;
+    }
+
     method make_thing_implicit($thing) {
         my @events = Adventure::ThingMadeImplicit.new(:$thing);
         self!apply_and_return: @events;
@@ -752,6 +769,10 @@ class Adventure::Engine {
 
     method on_open($thing, &hook) {
         %!open_hooks{$thing} = &hook;
+    }
+
+    method on_put($thing, &hook) {
+        %!put_hooks{$thing} = &hook;
     }
 
     my class Save {
@@ -870,6 +891,14 @@ class Crypt::Game {
             .place_thing('rope', 'contents:car');
             .make_thing_carryable('rope');
             .make_thing_openable('car');
+            .make_thing_a_container('car');
+            .on_put(
+                'car',
+                -> $_ {
+                    when 'leaves' { $!engine.remark('car-full-of-leaves') }
+                    ();
+                }
+            );
 
             # Things on hill
             .place_thing('grass', 'hill');
@@ -910,6 +939,14 @@ class Crypt::Game {
 
     method take($thing) {
         return $!engine.take($thing);
+    }
+
+    method put_thing_in($thing, $in) {
+        return $!engine.put_thing_in($thing, $in);
+    }
+
+    method put_thing_on($thing, $on) {
+        return $!engine.put_thing_on($thing, $on);
     }
 
     method save {
@@ -1023,6 +1060,11 @@ multi MAIN() {
                 proceed;
             }
 
+            when /^ 'put' \h+ (\w+) \h+ ('in'|'on') \h+ (\w+) $/ {
+                $command = "put_thing_$1 $0 $2";
+                proceed;
+            }
+
             my $verb = $command.words[0];
             my @args = $command.words[1..*];
             when %commands.exists($verb) {
@@ -1062,6 +1104,15 @@ multi MAIN() {
                     }
                     when Adventure::PlayerTook {
                         say "You take the {.thing}.";
+                    }
+                    when Adventure::PlayerOpened {
+                        say "You open the {.thing}.";
+                    }
+                    when Adventure::PlayerPutIn {
+                        say "You put the {.thing} in the {.in}.";
+                    }
+                    when Adventure::GameRemarked {
+                        say %descriptions{"remark:{.remark}"};
                     }
                 }
                 CATCH {
@@ -1936,6 +1987,28 @@ multi MAIN('test') {
                 :thing<leaves>,
             ),
             'taking the leaves';
+    }
+
+    {
+        my $game = Crypt::Game.new();
+
+        $game.walk('east');
+        $game.take('leaves');
+        $game.walk('west');
+        is $game.put_thing_in('leaves', 'car'),
+            [
+                Adventure::PlayerOpened.new(
+                    :thing<car>,
+                ),
+                Adventure::PlayerPutIn.new(
+                    :thing<leaves>,
+                    :in<car>,
+                ),
+                Adventure::GameRemarked.new(
+                    :remark<car-full-of-leaves>,
+                ),
+            ],
+            'putting the leaves in the car';
     }
 
     done;
