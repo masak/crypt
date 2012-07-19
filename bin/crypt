@@ -843,7 +843,7 @@ class Adventure::Engine {
 }
 
 class Crypt::Game {
-    has $!engine handles <walk save open examine take>;
+    has $!engine;
 
     submethod BUILD() {
         $!engine = Adventure::Engine.new();
@@ -889,6 +889,26 @@ class Crypt::Game {
 
     method look {
         return $!engine.look;
+    }
+
+    method walk($direction) {
+        return $!engine.walk($direction);
+    }
+
+    method open($thing) {
+        return $!engine.open($thing);
+    }
+
+    method examine($thing) {
+        return $!engine.examine($thing);
+    }
+
+    method take($thing) {
+        return $!engine.take($thing);
+    }
+
+    method save {
+        $!engine.save;
     }
 
     method restore($save) {
