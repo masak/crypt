@@ -504,6 +504,11 @@ class Adventure::Engine {
         return False;
     }
 
+    method !thing_in_room_or_inventory($thing) {
+        self!is_thing_in($thing, $!player_location)
+        || self!is_thing_in($thing, 'player inventory');
+    }
+
     method walk($direction) {
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
@@ -636,8 +641,11 @@ class Adventure::Engine {
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
-        # XXX: should check if the first thing is there
-        # XXX: should check if the second thing is there
+        die X::Adventure::NoSuchThingHere.new(:$thing)
+            unless self!thing_in_room_or_inventory($thing);
+
+        die X::Adventure::NoSuchThingHere.new(:thing($in))
+            unless self!thing_in_room_or_inventory($in);
 
         die X::Adventure::ThingNotCarryable.new(:action<put>, :$thing)
             unless %!carryable_things{$thing};
@@ -876,7 +884,7 @@ class Crypt::Game {
             .alias_direction('chamber', 'out', 'north');
             .connect(<chamber hall>, 'south');
             .alias_direction('chamber', 'in', 'south');
-            .alias_direction('cave', 'out', 'north');
+            .alias_direction('hall', 'out', 'north');
             .connect(<hall cave>, 'down');
             .connect(<cave crypt>, 'northwest');
             .on_try_exit('cave', 'northwest', {
@@ -896,8 +904,7 @@ class Crypt::Game {
                 'car',
                 -> $_ {
                     when 'leaves' { $!engine.remark('car-full-of-leaves') }
-                }
-            );
+                });
 
             # Things on hill
             .place_thing('grass', 'hill');
@@ -915,6 +922,18 @@ class Crypt::Game {
             .place_thing('leaves', 'hill');
             .make_thing_implicit('leaves');
             .make_thing_carryable('leaves');
+
+            # Things in chamber
+            .place_thing('basket', 'chamber');
+            .make_thing_a_container('basket');
+            .on_put(
+                'basket',
+                -> $_ {
+                    when 'leaves' {
+                        $!engine.connect(<chamber hall>, 'south'),
+                        $!engine.remark('passageway-opens-up');
+                    }
+                });
 
             .place_player('clearing');
         }
@@ -1973,6 +1992,7 @@ multi MAIN('test') {
                 Adventure::PlayerLooked.new(
                     :room<chamber>,
                     :exits<south north>,
+                    :things<basket>,
                 ),
             ],
             'walking into the hill (+) after opening the door';
@@ -2009,6 +2029,37 @@ multi MAIN('test') {
                 ),
             ],
             'putting the leaves in the car';
+    }
+
+    sub game_from_chamber {
+        my $game = Crypt::Game.new();
+
+        $game.walk('east');
+        $game.take('leaves');
+        $game.examine('bushes');
+        $game.open('door');
+        $game.walk('in');
+        return $game;
+    }
+
+    {
+        my $game = game_from_chamber();
+
+        is $game.put_thing_in('leaves', 'basket'),
+            [
+                Adventure::PlayerPutIn.new(
+                    :thing<leaves>,
+                    :in<basket>,
+                ),
+                Adventure::TwoRoomsConnected.new(
+                    :rooms<chamber hall>,
+                    :direction<south>,
+                ),
+                Adventure::GameRemarked.new(
+                    :remark<passageway-opens-up>,
+                ),
+            ],
+            'putting the leaves in the basket';
     }
 
     done;
