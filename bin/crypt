@@ -914,8 +914,10 @@ class Crypt::Game {
             .place_thing('door', 'hill');
             .make_thing_openable('door');
             .hide_thing('door');
-            .on_examine('grass', { .unhide_thing('door') });
-            .on_examine('bushes', { .unhide_thing('door') });
+            .on_examine('grass',
+                { .unhide_thing('door'), .remark('door-under-grass') });
+            .on_examine('bushes',
+                { .unhide_thing('door'), .remark('door-under-grass') });
             .on_open('door', { .connect(<hill chamber>, 'south') });
             .place_thing('trees', 'hill');
             .make_thing_implicit('trees');
