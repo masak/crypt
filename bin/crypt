@@ -803,7 +803,6 @@ class Adventure::Engine {
             'northeast' => 'southwest',
             'northwest' => 'southeast',
             'up'        => 'down',
-            'in'        => 'out',
         ;
 
         %opposites.push( %opposites.invert );
