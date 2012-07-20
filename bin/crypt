@@ -706,7 +706,8 @@ class Adventure::Engine {
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
-        # XXX: should check if the thing is there
+        die X::Adventure::NoSuchThingHere.new(:$thing)
+            unless self!thing_in_room_or_inventory($thing);
 
         die X::Adventure::ThingNotReadable.new(:$thing)
             unless %!readable_things{$thing};
@@ -929,6 +930,7 @@ class Crypt::Game {
             .place_thing('basket', 'chamber');
             .make_thing_a_container('basket');
             .place_thing('sign', 'chamber');
+            .make_thing_readable('sign');
             .on_put(
                 'basket',
                 -> $_ {
@@ -968,6 +970,10 @@ class Crypt::Game {
 
     method put_thing_on($thing, $on) {
         return $!engine.put_thing_on($thing, $on);
+    }
+
+    method read($thing) {
+        return $!engine.read($thing);
     }
 
     method save {
@@ -1135,6 +1141,9 @@ multi MAIN() {
                     }
                     when Adventure::GameRemarked {
                         say %descriptions{"remark:{.remark}"};
+                    }
+                    when Adventure::PlayerRead {
+                        say %descriptions{"{.thing}"};
                     }
                 }
                 CATCH {
@@ -1995,7 +2004,7 @@ multi MAIN('test') {
                 Adventure::PlayerLooked.new(
                     :room<chamber>,
                     :exits<south north>,
-                    :things<basket>,
+                    :things<basket sign>,
                 ),
             ],
             'walking into the hill (+) after opening the door';
@@ -2063,6 +2072,16 @@ multi MAIN('test') {
                 ),
             ],
             'putting the leaves in the basket';
+    }
+
+    {
+        my $game = game_from_chamber();
+
+        is $game.read('sign'),
+            Adventure::PlayerRead.new(
+                :thing<sign>,
+            ),
+            'reading the sign';
     }
 
     done;
