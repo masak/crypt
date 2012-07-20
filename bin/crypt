@@ -1076,8 +1076,9 @@ multi MAIN() {
                 }
                 my @events = $game."$verb"(|@args);
                 for @events {
-                    when Adventure::PlayerWalked { say ucfirst .to; say "" }
+                    when Adventure::PlayerWalked { say ucfirst .to; }
                     when Adventure::PlayerLooked {
+                        say "";
                         say %descriptions{.room};
                         for .things -> $thing {
                             if $thing ~~ Pair {
