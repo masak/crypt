@@ -928,6 +928,7 @@ class Crypt::Game {
             # Things in chamber
             .place_thing('basket', 'chamber');
             .make_thing_a_container('basket');
+            .place_thing('sign', 'chamber');
             .on_put(
                 'basket',
                 -> $_ {
