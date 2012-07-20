@@ -515,10 +515,7 @@ class Adventure::Engine {
             unless defined $!player_location;
 
         my $actual_direction =
-            %!exit_aliases.exists($!player_location)
-            && %!exit_aliases{$!player_location}.exists($direction)
-                ?? %!exit_aliases{$!player_location}{$direction}
-                !! $direction;
+            %!exit_aliases{$!player_location}{$direction} // $direction;
 
         my $to = %!exits{$!player_location}{$actual_direction};
 
