@@ -336,6 +336,18 @@ class Adventure::RoomMadeDark does Event {
     has $.room;
 }
 
+class Adventure::PlayerUsed does Event {
+    has $.thing;
+}
+
+class Adventure::ThingMadeALightSource does Event {
+    has $.thing;
+}
+
+class Adventure::LightSourceSwitchedOn does Event {
+    has $.thing;
+}
+
 class X::Adventure is Exception {
 }
 
@@ -469,6 +481,8 @@ class Adventure::Engine {
     has %!open_hooks;
     has %!put_hooks;
     has %!dark_rooms;
+    has %!light_sources;
+    has %!things_shining;
 
     method connect(@rooms, $direction) {
         die X::Adventure::NoSuchDirection.new(:action('connect rooms'), :$direction)
@@ -518,6 +532,14 @@ class Adventure::Engine {
         || self!is_thing_in($thing, 'player inventory');
     }
 
+    method !shining_thing_here() {
+        for %!things_shining.kv -> $thing, $shining {
+            next unless $shining;
+            return True if self!thing_in_room_or_inventory($thing);
+        }
+        return False;
+    }
+
     method walk($direction) {
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
@@ -536,7 +558,8 @@ class Adventure::Engine {
 
         my @events = Adventure::PlayerWalked.new(:$to);
         unless %!seen_room{$to}++ {
-            my $pitch_black = %!dark_rooms{$!player_location};
+            my $pitch_black = %!dark_rooms{$!player_location}
+                && !self!shining_thing_here();
 
             if $pitch_black {
                 @events.push(Adventure::PlayerLookedAtDarkness.new());
@@ -556,7 +579,8 @@ class Adventure::Engine {
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
-        my $pitch_black = %!dark_rooms{$!player_location};
+        my $pitch_black = %!dark_rooms{$!player_location}
+            && !self!shining_thing_here();
 
         my @events = $pitch_black
             ?? Adventure::PlayerLookedAtDarkness.new()
@@ -790,6 +814,25 @@ class Adventure::Engine {
         self!apply_and_return: @events;
     }
 
+    method use($thing) {
+        die X::Adventure::PlayerNowhere.new()
+            unless defined $!player_location;
+
+        die X::Adventure::NoSuchThingHere.new(:$thing)
+            unless self!thing_in_room_or_inventory($thing);
+
+        my @events = Adventure::PlayerUsed.new(:$thing);
+        if %!light_sources{$thing} {
+            @events.push(Adventure::LightSourceSwitchedOn.new(:$thing));
+        }
+        self!apply_and_return: @events;
+    }
+
+    method make_thing_a_light_source($thing) {
+        my @events = Adventure::ThingMadeALightSource.new(:$thing);
+        self!apply_and_return: @events;
+    }
+
     method on_try_exit($room, $direction, &hook) {
         %!try_exit_hooks{$room}{$direction} = &hook;
     }
@@ -893,6 +936,12 @@ class Adventure::Engine {
         when Adventure::RoomMadeDark {
             %!dark_rooms{.room} = True;
         }
+        when Adventure::ThingMadeALightSource {
+            %!light_sources{.thing} = True;
+        }
+        when Adventure::LightSourceSwitchedOn {
+            %!things_shining{.thing} = True;
+        }
     }
 }
 
@@ -910,7 +959,6 @@ class Crypt::Game {
             .connect(<chamber hall>, 'south');
             .alias_direction('chamber', 'in', 'south');
             .alias_direction('hall', 'out', 'north');
-            .connect(<hall cave>, 'down');
             .connect(<cave crypt>, 'northwest');
             .on_try_exit('cave', 'northwest', {
                 say "You try to walk past the fire, but it's too hot!";
@@ -924,6 +972,7 @@ class Crypt::Game {
             .place_thing('car', 'clearing');
             .place_thing('flashlight', 'contents:car');
             .make_thing_carryable('flashlight');
+            .make_thing_a_light_source('flashlight');
             .place_thing('rope', 'contents:car');
             .make_thing_carryable('rope');
             .make_thing_openable('car');
@@ -1001,6 +1050,10 @@ class Crypt::Game {
 
     method read($thing) {
         return $!engine.read($thing);
+    }
+
+    method use($thing) {
+        return $!engine.use($thing);
     }
 
     method save {
@@ -2127,7 +2180,19 @@ multi MAIN('test') {
         is $game.look(),
             Adventure::PlayerLookedAtDarkness.new(
             ),
-            'looking without the flashlight';
+            'looking without the flashlight switched on';
+    }
+
+    {
+        my $game = game_from_hall();
+
+        $game.use('flashlight');
+        is $game.look(),
+            Adventure::PlayerLooked.new(
+                :room<hall>,
+                :exits<north>,
+            ),
+            'looking with the flashlight switched on';
     }
 
     done;
