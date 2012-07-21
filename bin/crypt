@@ -329,6 +329,13 @@ class Adventure::GameRemarked does Event {
     has $.remark;
 }
 
+class Adventure::PlayerLookedAtDarkness does Event {
+}
+
+class Adventure::RoomMadeDark does Event {
+    has $.room;
+}
+
 class X::Adventure is Exception {
 }
 
@@ -461,6 +468,7 @@ class Adventure::Engine {
     has %!implicit_things;
     has %!open_hooks;
     has %!put_hooks;
+    has %!dark_rooms;
 
     method connect(@rooms, $direction) {
         die X::Adventure::NoSuchDirection.new(:action('connect rooms'), :$direction)
@@ -528,11 +536,18 @@ class Adventure::Engine {
 
         my @events = Adventure::PlayerWalked.new(:$to);
         unless %!seen_room{$to}++ {
-            @events.push(Adventure::PlayerLooked.new(
-                :room($to),
-                :exits((%!exits{$to} // ()).keys),
-                :things(self!explicit_things_at($to)),
-            ));
+            my $pitch_black = %!dark_rooms{$!player_location};
+
+            if $pitch_black {
+                @events.push(Adventure::PlayerLookedAtDarkness.new());
+            }
+            else {
+                @events.push(Adventure::PlayerLooked.new(
+                    :room($to),
+                    :exits((%!exits{$to} // ()).keys),
+                    :things(self!explicit_things_at($to)),
+                ));
+            }
         }
         self!apply_and_return: @events;
     }
@@ -541,11 +556,15 @@ class Adventure::Engine {
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
-        my @events = Adventure::PlayerLooked.new(
-            :room($!player_location),
-            :exits((%!exits{$!player_location} // ()).keys),
-            :things(self!explicit_things_at($!player_location)),
-        );
+        my $pitch_black = %!dark_rooms{$!player_location};
+
+        my @events = $pitch_black
+            ?? Adventure::PlayerLookedAtDarkness.new()
+            !! Adventure::PlayerLooked.new(
+                   :room($!player_location),
+                   :exits((%!exits{$!player_location} // ()).keys),
+                   :things(self!explicit_things_at($!player_location)),
+               );
         self!apply_and_return: @events;
     }
 
@@ -766,6 +785,11 @@ class Adventure::Engine {
         self!apply_and_return: @events;
     }
 
+    method make_room_dark($room) {
+        my @events = Adventure::RoomMadeDark.new(:$room);
+        self!apply_and_return: @events;
+    }
+
     method on_try_exit($room, $direction, &hook) {
         %!try_exit_hooks{$room}{$direction} = &hook;
     }
@@ -866,6 +890,9 @@ class Adventure::Engine {
         when Adventure::ThingMadeImplicit {
             %!implicit_things{.thing} = True;
         }
+        when Adventure::RoomMadeDark {
+            %!dark_rooms{.room} = True;
+        }
     }
 }
 
@@ -889,6 +916,9 @@ class Crypt::Game {
                 say "You try to walk past the fire, but it's too hot!";
                 False;
             });
+            .make_room_dark('hall');
+            .make_room_dark('cave');
+            .make_room_dark('crypt');
 
             # Things in clearing
             .place_thing('car', 'clearing');
@@ -2043,6 +2073,8 @@ multi MAIN('test') {
     sub game_from_chamber {
         my $game = Crypt::Game.new();
 
+        $game.open('car');
+        $game.take('flashlight');
         $game.walk('east');
         $game.take('leaves');
         $game.examine('bushes');
@@ -2079,6 +2111,23 @@ multi MAIN('test') {
                 :thing<sign>,
             ),
             'reading the sign';
+    }
+
+    sub game_from_hall {
+        my $game = game_from_chamber();
+
+        $game.put_thing_in('leaves', 'basket'),
+        $game.walk('south');
+        return $game;
+    }
+
+    {
+        my $game = game_from_hall();
+
+        is $game.look(),
+            Adventure::PlayerLookedAtDarkness.new(
+            ),
+            'looking without the flashlight';
     }
 
     done;
