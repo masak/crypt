@@ -945,8 +945,16 @@ class Adventure::Engine {
     }
 }
 
+class X::Crypt is Exception {
+}
+
+class X::Crypt::NoDisksHere is X::Crypt {
+}
+
 class Crypt::Game {
     has $!engine;
+    has $!hanoi;
+    has $!player_location;
 
     submethod BUILD() {
         $!engine = Adventure::Engine.new();
@@ -1015,16 +1023,27 @@ class Crypt::Game {
                     }
                 });
 
-            .place_player('clearing');
+            .place_player($!player_location = 'clearing');
         }
+
+        $!hanoi = Hanoi::Game.new();
     }
 
     method look {
         return $!engine.look;
     }
 
+    method !update_local_state(@events) {
+        for @events {
+            when Adventure::PlayerWalked { $!player_location = .to }
+            when Adventure::PlayerWasPlaced { $!player_location = .in }
+        }
+    }
+
     method walk($direction) {
-        return $!engine.walk($direction);
+        my @events = $!engine.walk($direction);
+        self!update_local_state(@events);
+        @events;
     }
 
     method open($thing) {
@@ -1053,6 +1072,13 @@ class Crypt::Game {
 
     method use($thing) {
         return $!engine.use($thing);
+    }
+
+    method move($source, $target) {
+        die X::Crypt::NoDisksHere.new
+            unless $!player_location eq 'hall';
+
+        return $!hanoi.move($source, $target);
     }
 
     method save {
@@ -2207,6 +2233,28 @@ multi MAIN('test') {
                 :exits<north>,
             ),
             'looking with the flashlight switched on';
+    }
+
+    {
+        my $game = game_from_chamber();
+
+        throws_exception
+            { $game.move('left', 'middle') },
+            X::Crypt::NoDisksHere,
+            'moving disks in the right room (-)';
+    }
+
+    {
+        my $game = game_from_hall();
+
+        $game.use('flashlight');
+        is $game.move('left', 'middle'),
+            Hanoi::DiskMoved.new(
+                :disk('tiny disk'),
+                :source<left>,
+                :target<middle>,
+            ),
+            'moving disks in the right room (+)';
     }
 
     done;
