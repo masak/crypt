@@ -956,7 +956,6 @@ class Crypt::Game {
             .connect(<clearing hill>, 'east');
             .alias_direction('hill', 'in', 'south');
             .alias_direction('chamber', 'out', 'north');
-            .connect(<chamber hall>, 'south');
             .alias_direction('chamber', 'in', 'south');
             .alias_direction('hall', 'out', 'north');
             .connect(<cave crypt>, 'northwest');
@@ -2084,7 +2083,7 @@ multi MAIN('test') {
                 ),
                 Adventure::PlayerLooked.new(
                     :room<chamber>,
-                    :exits<south north>,
+                    :exits<north>,
                     :things<basket sign>,
                 ),
             ],
