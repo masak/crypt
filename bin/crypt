@@ -527,15 +527,15 @@ class Adventure::Engine {
         return False;
     }
 
-    method !thing_in_room_or_inventory($thing) {
-        self!is_thing_in($thing, $!player_location)
+    method !thing_in_room_or_inventory($thing, $room) {
+        self!is_thing_in($thing, $room)
         || self!is_thing_in($thing, 'player inventory');
     }
 
-    method !shining_thing_here() {
+    method !shining_thing_here($room) {
         for %!things_shining.kv -> $thing, $shining {
             next unless $shining;
-            return True if self!thing_in_room_or_inventory($thing);
+            return True if self!thing_in_room_or_inventory($thing, $room);
         }
         return False;
     }
@@ -558,8 +558,8 @@ class Adventure::Engine {
 
         my @events = Adventure::PlayerWalked.new(:$to);
         unless %!seen_room{$to}++ {
-            my $pitch_black = %!dark_rooms{$!player_location}
-                && !self!shining_thing_here();
+            my $pitch_black = %!dark_rooms{$to}
+                && !self!shining_thing_here($to);
 
             if $pitch_black {
                 @events.push(Adventure::PlayerLookedAtDarkness.new());
@@ -580,7 +580,7 @@ class Adventure::Engine {
             unless defined $!player_location;
 
         my $pitch_black = %!dark_rooms{$!player_location}
-            && !self!shining_thing_here();
+            && !self!shining_thing_here($!player_location);
 
         my @events = $pitch_black
             ?? Adventure::PlayerLookedAtDarkness.new()
@@ -683,10 +683,10 @@ class Adventure::Engine {
             unless defined $!player_location;
 
         die X::Adventure::NoSuchThingHere.new(:$thing)
-            unless self!thing_in_room_or_inventory($thing);
+            unless self!thing_in_room_or_inventory($thing, $!player_location);
 
         die X::Adventure::NoSuchThingHere.new(:thing($in))
-            unless self!thing_in_room_or_inventory($in);
+            unless self!thing_in_room_or_inventory($in, $!player_location);
 
         die X::Adventure::ThingNotCarryable.new(:action<put>, :$thing)
             unless %!carryable_things{$thing};
@@ -748,7 +748,7 @@ class Adventure::Engine {
             unless defined $!player_location;
 
         die X::Adventure::NoSuchThingHere.new(:$thing)
-            unless self!thing_in_room_or_inventory($thing);
+            unless self!thing_in_room_or_inventory($thing, $!player_location);
 
         die X::Adventure::ThingNotReadable.new(:$thing)
             unless %!readable_things{$thing};
@@ -819,7 +819,7 @@ class Adventure::Engine {
             unless defined $!player_location;
 
         die X::Adventure::NoSuchThingHere.new(:$thing)
-            unless self!thing_in_room_or_inventory($thing);
+            unless self!thing_in_room_or_inventory($thing, $!player_location);
 
         my @events = Adventure::PlayerUsed.new(:$thing);
         if %!light_sources{$thing} {
@@ -1205,6 +1205,7 @@ multi MAIN() {
                             say "You can go {join ' and ', .exits}.";
                         }
                     }
+                    when Adventure::PlayerLookedAtDarkness { say "It is pitch black." }
                     when Adventure::PlayerExamined { say %descriptions{.thing} }
                     when Adventure::ContentsRevealed {
                         my $contents = join " and ", map { "a $_" }, .contents;
