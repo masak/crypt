@@ -1106,6 +1106,8 @@ multi MAIN() {
         say "";
     }
 
+    my @all_events;
+
     loop {
         my $command = prompt('> ');
         given $command {
@@ -1141,6 +1143,10 @@ multi MAIN() {
                         say ucfirst .room;
                         say "";
                         say %descriptions{.room};
+                        if .room eq 'hall' {
+                            print_hanoi_game(@all_events);
+                            say "";
+                        }
                         for .things -> $thing {
                             if $thing ~~ Pair {
                                 say "There is a $thing.key() here.";
@@ -1182,11 +1188,16 @@ multi MAIN() {
                     }
                 }
                 my @events = $game."$verb"(|@args);
+                push @all_events, @events;
                 for @events {
                     when Adventure::PlayerWalked { say ucfirst .to; }
                     when Adventure::PlayerLooked {
                         say "";
                         say %descriptions{.room};
+                        if .room eq 'hall' {
+                            print_hanoi_game(@all_events);
+                            say "";
+                        }
                         for .things -> $thing {
                             if $thing ~~ Pair {
                                 say "There is a $thing.key() here.";
@@ -1240,10 +1251,44 @@ multi MAIN() {
     say "Thanks for playing.";
 }
 
-multi MAIN('hanoi') {
-    my Hanoi::Game $game .= new;
+sub print_hanoi_game(@all_events) {
     my @disks = <tiny small medium large huge> X~ ' disk';
     my @rods = <left middle right>;
+
+    my %s =
+        left   => [reverse @disks],
+        middle => [],
+        right  => [],
+    ;
+    for @all_events {
+        when Hanoi::DiskMoved   { %s{.target}.push: %s{.source}.pop }
+        when Hanoi::DiskRemoved { %s{.source}.pop }
+        when Hanoi::DiskAdded   { %s{.target}.push: .disk }
+    }
+
+    say "";
+    for reverse ^6 -> $line {
+        my %disks =
+            'none'        => '     |     ',
+            'tiny disk'   => '     =     ',
+            'small disk'  => '    ===    ',
+            'medium disk' => '   =====   ',
+            'large disk'  => '  =======  ',
+            'huge disk'   => ' ========= ',
+        ;
+
+        sub disk($rod) {
+            my $disk = %s{$rod}[$line] // 'none';
+            %disks{ $disk };
+        }
+
+        say join '  ', map &disk, @rods;
+    }
+    say join '--', '-----------' xx @rods;
+}
+
+multi MAIN('hanoi') {
+    my Hanoi::Game $game .= new;
 
     sub params($method) {
         $method.signature.params
@@ -1253,40 +1298,7 @@ multi MAIN('hanoi') {
     my %commands = map { $^m.name => params($m) }, $game.^methods;
     my @all_events;
 
-    sub print_board() {
-        my %s =
-            left   => [reverse @disks],
-            middle => [],
-            right  => [],
-        ;
-        for @all_events {
-            when Hanoi::DiskMoved   { %s{.target}.push: %s{.source}.pop }
-            when Hanoi::DiskRemoved { %s{.source}.pop }
-            when Hanoi::DiskAdded   { %s{.target}.push: .disk }
-        }
-
-        say "";
-        for reverse ^6 -> $line {
-            my %disks =
-                'none'        => '     |     ',
-                'tiny disk'   => '     =     ',
-                'small disk'  => '    ===    ',
-                'medium disk' => '   =====   ',
-                'large disk'  => '  =======  ',
-                'huge disk'   => ' ========= ',
-            ;
-
-            sub disk($rod) {
-                my $disk = %s{$rod}[$line] // 'none';
-                %disks{ $disk };
-            }
-
-            say join '  ', map &disk, @rods;
-        }
-        say join '--', '-----------' xx @rods;
-    }
-
-    print_board();
+    print_hanoi_game(@all_events);
     say "";
     loop {
         my $command = prompt('> ');
@@ -1307,10 +1319,12 @@ multi MAIN('hanoi') {
                 say "  h[elp]";
                 say "  s[how]";
                 say "";
+                my @disks = <tiny small medium large huge> X~ ' disk';
+                my @rods = <left middle right>;
                 say "Disks: ", join ', ', @disks;
                 say "Rods: ", join ', ', @rods;
             }
-            when 's' | 'show' { print_board() }
+            when 's' | 'show' { print_hanoi_game(@all_events) }
 
             sub munge   { $^s.subst(/' disk'»/, '_disk', :g) }
             sub unmunge { $^s.subst(/'_disk'»/, ' disk', :g) }
@@ -1325,7 +1339,7 @@ multi MAIN('hanoi') {
                 }
                 my @events = $game."$verb"(|@args);
                 push @all_events, @events;
-                print_board();
+                print_hanoi_game(@all_events);
                 for @events {
                     when Hanoi::AchievementUnlocked { say "Achievement unlocked!" }
                     when Hanoi::AchievementLocked { say "Achievement locked!" }
