@@ -1198,6 +1198,24 @@ multi MAIN() {
                 proceed;
             }
 
+            when /^ :s [move|put] [the]?
+                    $<disk>=[tiny||small||medium||large||huge]
+                    disk [on|to] [the]?
+                    $<target>=[left||middle||right]
+                    rod $/ {
+
+                $command = "move $<disk> $<target>";
+            }
+
+            when /^ :s [move|put] [the]?
+                    $<source>=[left||middle||right]
+                    disk [on|to] [the]?
+                    $<target>=[left||middle||right]
+                    rod $/ {
+
+                $command = "move $<source> $<target>";
+            }
+
             when /^ 'put' \h+ (\w+) \h+ ('in'|'on') \h+ (\w+) $/ {
                 $command = "put_thing_$1 $0 $2";
                 proceed;
