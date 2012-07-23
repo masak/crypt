@@ -961,69 +961,69 @@ class Crypt::Game {
 
         given $!engine {
             # Rooms
-            .connect(<clearing hill>, 'east');
-            .alias_direction('hill', 'in', 'south');
-            .alias_direction('chamber', 'out', 'north');
-            .alias_direction('chamber', 'in', 'south');
-            .alias_direction('hall', 'out', 'north');
-            .connect(<cave crypt>, 'northwest');
-            .on_try_exit('cave', 'northwest', {
+            .connect: <clearing hill>, 'east';
+            .alias_direction: 'hill', 'in', 'south';
+            .alias_direction: 'chamber', 'out', 'north';
+            .alias_direction: 'chamber', 'in', 'south';
+            .alias_direction: 'hall', 'out', 'north';
+            .connect: <cave crypt>, 'northwest';
+            .on_try_exit: 'cave', 'northwest', {
                 say "You try to walk past the fire, but it's too hot!";
                 False;
-            });
-            .make_room_dark('hall');
-            .make_room_dark('cave');
-            .make_room_dark('crypt');
+            };
+            .make_room_dark: 'hall';
+            .make_room_dark: 'cave';
+            .make_room_dark: 'crypt';
 
             # Things in clearing
-            .place_thing('car', 'clearing');
-            .place_thing('flashlight', 'contents:car');
-            .make_thing_carryable('flashlight');
-            .make_thing_a_light_source('flashlight');
-            .place_thing('rope', 'contents:car');
-            .make_thing_carryable('rope');
-            .make_thing_openable('car');
-            .make_thing_a_container('car');
-            .on_put(
+            .place_thing: 'car', 'clearing';
+            .place_thing: 'flashlight', 'contents:car';
+            .make_thing_carryable: 'flashlight';
+            .make_thing_a_light_source: 'flashlight';
+            .place_thing: 'rope', 'contents:car';
+            .make_thing_carryable: 'rope';
+            .make_thing_openable: 'car';
+            .make_thing_a_container: 'car';
+            .on_put:
                 'car',
                 -> $_ {
-                    when 'leaves' { $!engine.remark('car-full-of-leaves') }
-                });
+                    when 'leaves' { $!engine.remark: 'car-full-of-leaves' }
+                };
 
             # Things on hill
-            .place_thing('grass', 'hill');
-            .make_thing_implicit('grass');
-            .place_thing('bushes', 'hill');
-            .make_thing_implicit('bushes');
-            .place_thing('door', 'hill');
-            .make_thing_openable('door');
-            .hide_thing('door');
-            .on_examine('grass',
-                { .unhide_thing('door'), .remark('door-under-grass') });
-            .on_examine('bushes',
-                { .unhide_thing('door'), .remark('door-under-grass') });
-            .on_open('door', { .connect(<hill chamber>, 'south') });
-            .place_thing('trees', 'hill');
-            .make_thing_implicit('trees');
-            .place_thing('leaves', 'hill');
-            .make_thing_implicit('leaves');
-            .make_thing_carryable('leaves');
+            .place_thing: 'grass', 'hill';
+            .make_thing_implicit: 'grass';
+            .place_thing: 'bushes', 'hill';
+            .make_thing_implicit: 'bushes';
+            .place_thing: 'door', 'hill';
+            .make_thing_openable: 'door';
+            .hide_thing: 'door';
+            .on_examine: 'grass',
+                { .unhide_thing('door'), .remark('door-under-grass') };
+            .on_examine: 'bushes',
+                { .unhide_thing('door'), .remark('door-under-grass') };
+            .on_open: 'door', { .connect(<hill chamber>, 'south') };
+            .place_thing: 'trees', 'hill';
+            .make_thing_implicit: 'trees';
+            .place_thing: 'leaves', 'hill';
+            .make_thing_implicit: 'leaves';
+            .make_thing_carryable: 'leaves';
 
             # Things in chamber
-            .place_thing('basket', 'chamber');
-            .make_thing_a_container('basket');
-            .place_thing('sign', 'chamber');
-            .make_thing_readable('sign');
-            .on_put(
+            .place_thing: 'basket', 'chamber';
+            .make_thing_a_container: 'basket';
+            .place_thing: 'sign', 'chamber';
+            .make_thing_readable: 'sign';
+            .on_put:
                 'basket',
                 -> $_ {
                     when 'leaves' {
                         $!engine.connect(<chamber hall>, 'south'),
                         $!engine.remark('passageway-opens-up');
                     }
-                });
+                };
 
-            .place_player($!player_location = 'clearing');
+            .place_player: $!player_location = 'clearing';
         }
 
         $!hanoi = Hanoi::Game.new();
