@@ -1280,6 +1280,10 @@ multi MAIN() {
                     when Adventure::PlayerRead {
                         say %descriptions{"{.thing}"};
                     }
+                    when Hanoi::DiskMoved {
+                        say "You put the {.disk} on the {.target} rod.";
+                        print_hanoi_game(@all_events);
+                    }
                 }
                 CATCH {
                     when X::Adventure { say .message, '.' }
