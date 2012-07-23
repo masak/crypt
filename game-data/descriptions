@@ -71,3 +71,9 @@ You discover a door in the hill, under the thick grass!
 == remark:passageway-opens-up
 The ground rumbles and shakes a bit.
 A passageway opens up to the south, into the caverns.
+
+== remark:floor-reveals-hole
+The whole floor tips, and reveals a hole beneath the wall.
+
+== remark:floor-hides-hole
+The whole floor tips back, hiding the hole again.

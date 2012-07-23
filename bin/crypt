@@ -251,6 +251,11 @@ class Adventure::TwoRoomsConnected does Event {
     has $.direction;
 }
 
+class Adventure::TwoRoomsDisconnected does Event {
+    has @.rooms;
+    has $.direction;
+}
+
 class Adventure::DirectionAliased does Event {
     has $.room;
     has $.direction;
@@ -489,6 +494,14 @@ class Adventure::Engine {
             unless $direction eq any(@possible_directions);
 
         my @events = Adventure::TwoRoomsConnected.new(:@rooms, :$direction);
+        self!apply_and_return: @events;
+    }
+
+    method disconnect(@rooms, $direction) {
+        die X::Adventure::NoSuchDirection.new(:action('disconnect rooms'), :$direction)
+            unless $direction eq any(@possible_directions);
+
+        my @events = Adventure::TwoRoomsDisconnected.new(:@rooms, :$direction);
         self!apply_and_return: @events;
     }
 
@@ -891,6 +904,12 @@ class Adventure::Engine {
             %!exits{$room1}{$direction} = $room2;
             %!exits{$room2}{opposite $direction} = $room1;
         }
+        when Adventure::TwoRoomsDisconnected {
+            my ($room1, $room2) = .rooms.list;
+            my $direction = .direction;
+            %!exits{$room1}.delete($direction);
+            %!exits{$room2}.delete(opposite $direction);
+        }
         when Adventure::PlayerWalked {
             $!player_location = .to;
         }
@@ -1078,7 +1097,20 @@ class Crypt::Game {
         die X::Crypt::NoDisksHere.new
             unless $!player_location eq 'hall';
 
-        return $!hanoi.move($source, $target);
+        my @events = $!hanoi.move($source, $target);
+        for @events {
+            when Hanoi::AchievementUnlocked {
+                push @events,
+                    $!engine.remark('floor-reveals-hole'),
+                    $!engine.connect(<hall cave>, 'down');
+            }
+            when Hanoi::AchievementLocked {
+                push @events,
+                    $!engine.remark('floor-hides-hole'),
+                    $!engine.disconnect(<hall cave>, 'down');
+            }
+        }
+        return @events;
     }
 
     method save {
@@ -1287,6 +1319,7 @@ multi MAIN() {
                 }
                 CATCH {
                     when X::Adventure { say .message, '.' }
+                    when X::Hanoi { say .message, '.' }
                 }
             }
 
