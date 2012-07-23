@@ -2312,6 +2312,32 @@ multi MAIN('test') {
             'moving disks in the right room (+)';
     }
 
+    sub game_after_hanoi_is_solved {
+        my $game = game_from_hall();
+
+        multi hanoi_moves($source, $, $target, 1) { { :$source, :$target } }
+        multi hanoi_moves($source, $helper, $target, $n) {
+            hanoi_moves($source, $target, $helper, $n-1),
+            hanoi_moves($source, $helper, $target, 1),
+            hanoi_moves($helper, $source, $target, $n-1);
+        }
+
+        $game.use('flashlight');
+        $game.move(.<source>, .<target>)
+            for hanoi_moves('left', 'middle', 'right', 5);
+        return $game;
+    }
+
+    {
+        my $game = game_after_hanoi_is_solved();
+
+        is $game.walk('down')[0],
+            Adventure::PlayerWalked.new(
+                :to<cave>,
+            ),
+            'can walk down after solving the hanoi game (+)';
+    }
+
     done;
 }
 
