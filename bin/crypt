@@ -1069,6 +1069,7 @@ class Crypt::Game {
             # Things in hall
             .place_thing: 'helmet', 'hall';
             .make_thing_carryable: 'helmet';
+            .make_thing_a_container: 'helmet';
 
             .place_player: $!player_location = 'clearing';
         }
@@ -2407,6 +2408,21 @@ multi MAIN('test') {
                     "You cannot see anything, because it is pitch black",
                     '.message attribute';
             };
+    }
+
+    {
+        my $game = game_from_hall();
+
+        $game.use('flashlight');
+        $game.take('helmet');
+        $game.walk('north');
+        $game.walk('north');
+        is $game.put_thing_in('water', 'helmet'),
+            Adventure::PlayerPutIn.new(
+                :thing<water>,
+                :in<helmet>,
+            ),
+            'filling the helmet with water';
     }
 
     done;
