@@ -2607,6 +2607,22 @@ multi MAIN('test') {
             'after water is gone, can walk into crypt';
     }
 
+    {
+        my $game = game_from_hall();
+
+        $game.use('flashlight');
+        $game.take('helmet');
+        $game.walk('north');
+        $game.walk('north');
+        $game.put_thing_in('water', 'helmet');
+        is $game.drop('water'),
+            Adventure::PlayerDropped.new(
+                :thing<water>,
+            ),
+            'dropping water in the helmet';
+        )
+    }
+
     done;
 }
 
