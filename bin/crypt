@@ -496,6 +496,7 @@ class Adventure::Engine {
     has %!dark_rooms;
     has %!light_sources;
     has %!things_shining;
+    has %!remove_from_hooks;
 
     method connect(@rooms, $direction) {
         die X::Adventure::NoSuchDirection.new(:action('connect rooms'), :$direction)
@@ -542,7 +543,8 @@ class Adventure::Engine {
             return True
                 if $thing eq $sought;
             return True
-                if %!open_things{$thing}
+                if %!containers{$thing}
+                && (!%!openable_things{$thing} || %!open_things{$thing})
                 && self!is_thing_in($sought, "contents:$thing");
         }
         return False;
@@ -818,6 +820,11 @@ class Adventure::Engine {
             unless %!carryable_things{$thing};
 
         my @events = Adventure::PlayerTook.new(:$thing);
+        for %!remove_from_hooks.kv -> $container, &hook {
+            if self!is_thing_in($thing, "contents:$container") {
+                @events.push($_) when Event for &hook($thing);
+            }
+        }
         self!apply_and_return: @events;
     }
 
@@ -880,6 +887,10 @@ class Adventure::Engine {
 
     method on_put($thing, &hook) {
         %!put_hooks{$thing} = &hook;
+    }
+
+    method on_remove_from($thing, &hook) {
+        %!remove_from_hooks{$thing} = &hook;
     }
 
     my class Save {
@@ -981,6 +992,9 @@ class Adventure::Engine {
         when Adventure::LightSourceSwitchedOn {
             %!things_shining{.thing} = True;
         }
+        when Adventure::PlayerPutIn {
+            %!thing_rooms{.thing} = "contents:{.in}";
+        }
     }
 }
 
@@ -1048,6 +1062,13 @@ class Crypt::Game {
             .make_thing_implicit: 'leaves';
             .make_thing_carryable: 'leaves';
             .place_thing: 'brook', 'hill';
+            .make_thing_a_container: 'brook';
+            .on_remove_from: 'brook',
+                -> $_ {
+                    when 'helmet' {
+                        $!engine.place_thing('water', 'contents:helmet');
+                    }
+                };
             .place_thing: 'water', 'hill';
             .make_thing_implicit: 'water';
             .make_thing_carryable: 'water';
@@ -2423,6 +2444,27 @@ multi MAIN('test') {
                 :in<helmet>,
             ),
             'filling the helmet with water';
+    }
+
+    {
+        my $game = game_from_hall();
+
+        $game.use('flashlight');
+        $game.take('helmet');
+        $game.walk('north');
+        $game.walk('north');
+        $game.put_thing_in('helmet', 'brook');
+        is $game.take('helmet'),
+            [
+                Adventure::PlayerTook.new(
+                    :thing<helmet>,
+                ),
+                Adventure::ThingPlaced.new(
+                    :thing<water>,
+                    :room<contents:helmet>,
+                ),
+            ],
+            'picking helmet up from brook fills it with water';
     }
 
     done;
