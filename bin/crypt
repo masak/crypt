@@ -1047,6 +1047,10 @@ class Crypt::Game {
             .place_thing: 'leaves', 'hill';
             .make_thing_implicit: 'leaves';
             .make_thing_carryable: 'leaves';
+            .place_thing: 'brook', 'hill';
+            .place_thing: 'water', 'hill';
+            .make_thing_implicit: 'water';
+            .make_thing_carryable: 'water';
 
             # Things in chamber
             .place_thing: 'basket', 'chamber';
@@ -1539,6 +1543,7 @@ multi MAIN('test') {
                 Adventure::PlayerLooked.new(
                     :room<hill>,
                     :exits<west>,
+                    :things<brook>,
                 ),
             ],
             'walking (+)';
