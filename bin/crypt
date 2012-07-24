@@ -643,6 +643,12 @@ class Adventure::Engine {
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
+        my $pitch_black = %!dark_rooms{$!player_location}
+            && !self!shining_thing_here($!player_location);
+
+        die X::Adventure::PitchBlack.new(:action<see>)
+            if $pitch_black;
+
         die X::Adventure::NoSuchThingHere.new(:$thing)
             unless self!is_thing_in($thing, $!player_location);
 
@@ -2379,6 +2385,21 @@ multi MAIN('test') {
                 is .action, 'take', '.action attribute';
                 is .message,
                     "You cannot take anything, because it is pitch black",
+                    '.message attribute';
+            };
+    }
+
+    {
+        my $game = game_from_hall();
+
+        throws_exception
+            { $game.examine('helmet') },
+            X::Adventure::PitchBlack,
+            'examining the helmet (-) pitch black',
+            {
+                is .action, 'see', '.action attribute';
+                is .message,
+                    "You cannot see anything, because it is pitch black",
                     '.message attribute';
             };
     }
