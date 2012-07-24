@@ -460,6 +460,14 @@ class X::Adventure::PlayerDoesNotHave is X::Adventure {
     }
 }
 
+class X::Adventure::PitchBlack is X::Adventure {
+    has $.action;
+
+    method message {
+        "You cannot $.action anything, because it is pitch black"
+    }
+}
+
 class Adventure::Engine {
     my @possible_directions = <
         north south east west
@@ -790,6 +798,12 @@ class Adventure::Engine {
 
         die X::Adventure::PlayerAlreadyCarries.new(:$thing)
             if (%!thing_rooms{$thing} // '') eq 'player inventory';
+
+        my $pitch_black = %!dark_rooms{$!player_location}
+            && !self!shining_thing_here($!player_location);
+
+        die X::Adventure::PitchBlack.new(:action<take>)
+            if $pitch_black;
 
         die X::Adventure::NoSuchThingHere.new(:$thing)
             unless self!is_thing_in($thing, $!player_location);
@@ -2352,6 +2366,21 @@ multi MAIN('test') {
                 :thing<helmet>,
             ),
             'taking the helmet (+)';
+    }
+
+    {
+        my $game = game_from_hall();
+
+        throws_exception
+            { $game.take('helmet') },
+            X::Adventure::PitchBlack,
+            'taking the helmet (-) pitch black',
+            {
+                is .action, 'take', '.action attribute';
+                is .message,
+                    "You cannot take anything, because it is pitch black",
+                    '.message attribute';
+            };
     }
 
     done;
