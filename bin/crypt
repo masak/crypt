@@ -497,6 +497,7 @@ class Adventure::Engine {
     has %!light_sources;
     has %!things_shining;
     has %!remove_from_hooks;
+    has %!take_hooks;
 
     method connect(@rooms, $direction) {
         die X::Adventure::NoSuchDirection.new(:action('connect rooms'), :$direction)
@@ -819,13 +820,19 @@ class Adventure::Engine {
         die X::Adventure::ThingNotCarryable.new(:action<take>, :$thing)
             unless %!carryable_things{$thing};
 
-        my @events = Adventure::PlayerTook.new(:$thing);
+        my @events;
         for %!remove_from_hooks.kv -> $container, &hook {
             if self!is_thing_in($thing, "contents:$container") {
                 @events.push($_) when Event for &hook($thing);
             }
         }
-        self!apply_and_return: @events;
+        # XXX: Need to apply this event early so that hooks can drop the thing.
+        self!apply(Adventure::PlayerTook.new(:$thing));
+        if %!take_hooks{$thing} -> &hook {
+            @events.push($_) when Event for &hook();
+        }
+        self!apply($_) for @events;
+        return Adventure::PlayerTook.new(:$thing), @events;
     }
 
     method drop($thing) {
@@ -891,6 +898,10 @@ class Adventure::Engine {
 
     method on_remove_from($thing, &hook) {
         %!remove_from_hooks{$thing} = &hook;
+    }
+
+    method on_take($thing, &hook) {
+        %!take_hooks{$thing} = &hook;
     }
 
     my class Save {
@@ -1070,6 +1081,11 @@ class Crypt::Game {
                     }
                 };
             .place_thing: 'water', 'hill';
+            .on_take: 'water',
+                {
+                    $!engine.remark('bare-hands-carry-water'),
+                    $!engine.drop('water');
+                };
             .make_thing_implicit: 'water';
             .make_thing_carryable: 'water';
 
@@ -1125,6 +1141,10 @@ class Crypt::Game {
 
     method take($thing) {
         return $!engine.take($thing);
+    }
+
+    method drop($thing) {
+        return $!engine.drop($thing);
     }
 
     method put_thing_in($thing, $in) {
@@ -1349,6 +1369,9 @@ multi MAIN() {
                     }
                     when Adventure::PlayerTook {
                         say "You take the {.thing}.";
+                    }
+                    when Adventure::PlayerDropped {
+                        say "You drop the {.thing} on the ground.";
                     }
                     when Adventure::PlayerOpened {
                         say "You open the {.thing}.";
@@ -2465,6 +2488,25 @@ multi MAIN('test') {
                 ),
             ],
             'picking helmet up from brook fills it with water';
+    }
+
+    {
+        my $game = Crypt::Game.new();
+
+        $game.walk('east');
+        is $game.take('water'),
+            [
+                Adventure::PlayerTook.new(
+                    :thing<water>,
+                ),
+                Adventure::GameRemarked.new(
+                    :remark<bare-hands-carry-water>,
+                ),
+                Adventure::PlayerDropped.new(
+                    :thing<water>,
+                ),
+            ],
+            'picking up water with your bare hands fails';
     }
 
     done;
