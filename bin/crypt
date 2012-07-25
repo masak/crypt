@@ -1052,6 +1052,10 @@ class Crypt::Game {
                 'car',
                 -> $_ {
                     when 'leaves' { $!engine.remark: 'car-full-of-leaves' }
+                    when 'water' {
+                        $!engine.remark('car-is-now-wet'),
+                        $!engine.place_thing('water', 'hill');
+                    }
                 };
 
             # Things on hill
@@ -2507,6 +2511,32 @@ multi MAIN('test') {
                 ),
             ],
             'picking up water with your bare hands fails';
+    }
+
+    {
+        my $game = game_from_hall();
+
+        $game.use('flashlight');
+        $game.take('helmet');
+        $game.walk('north');
+        $game.walk('north');
+        $game.put_thing_in('water', 'helmet');
+        $game.walk('west');
+        is $game.put_thing_in('water', 'car'),
+            [
+                Adventure::PlayerPutIn.new(
+                    :thing<water>,
+                    :in<car>,
+                ),
+                Adventure::GameRemarked.new(
+                    :remark<car-is-now-wet>,
+                ),
+                Adventure::ThingPlaced.new(
+                    :thing<water>,
+                    :room<hill>,
+                ),
+            ],
+            'putting water into the car';
     }
 
     done;
