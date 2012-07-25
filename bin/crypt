@@ -1112,6 +1112,18 @@ class Crypt::Game {
             .make_thing_carryable: 'helmet';
             .make_thing_a_container: 'helmet';
 
+            # Things in cave
+            .place_thing: 'fire', 'cave';
+            .make_thing_a_container: 'fire';
+            .on_put:
+                'fire',
+                -> $_ {
+                    when 'water' {
+                        $!engine.remark('fire-dies'),
+                        $!engine.place_thing('fire', 'nowhere');
+                    }
+                };
+
             .place_player: $!player_location = 'clearing';
         }
 
@@ -2537,6 +2549,33 @@ multi MAIN('test') {
                 ),
             ],
             'putting water into the car';
+    }
+
+    {
+        my $game = game_after_hanoi_is_solved();
+
+        $game.take('helmet');
+        $game.walk('north');
+        $game.walk('north');
+        $game.put_thing_in('water', 'helmet');
+        $game.walk('south');
+        $game.walk('south');
+        $game.walk('down');
+        is $game.put_thing_in('water', 'fire'),
+            [
+                Adventure::PlayerPutIn.new(
+                    :thing<water>,
+                    :in<fire>,
+                ),
+                Adventure::GameRemarked.new(
+                    :remark<fire-dies>,
+                ),
+                Adventure::ThingPlaced.new(
+                    :thing<fire>,
+                    :room<nowhere>,
+                ),
+            ],
+            'putting out the fire with water';
     }
 
     done;
