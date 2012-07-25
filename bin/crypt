@@ -537,7 +537,7 @@ class Adventure::Engine {
         }
     }
 
-    method !is_thing_in($sought, $location) {
+    method thing_is_in($sought, $location) {
         return unless $location;
         for %!thing_rooms.keys -> $thing {
             next unless %!thing_rooms{$thing} eq $location;
@@ -546,20 +546,20 @@ class Adventure::Engine {
             return True
                 if %!containers{$thing}
                 && (!%!openable_things{$thing} || %!open_things{$thing})
-                && self!is_thing_in($sought, "contents:$thing");
+                && self.thing_is_in($sought, "contents:$thing");
         }
         return False;
     }
 
-    method !thing_in_room_or_inventory($thing, $room) {
-        self!is_thing_in($thing, $room)
-        || self!is_thing_in($thing, 'player inventory');
+    method thing_in_room_or_inventory($thing, $room) {
+        self.thing_is_in($thing, $room)
+        || self.thing_is_in($thing, 'player inventory');
     }
 
     method !shining_thing_here($room) {
         for %!things_shining.kv -> $thing, $shining {
             next unless $shining;
-            return True if self!thing_in_room_or_inventory($thing, $room);
+            return True if self.thing_in_room_or_inventory($thing, $room);
         }
         return False;
     }
@@ -653,7 +653,7 @@ class Adventure::Engine {
             if $pitch_black;
 
         die X::Adventure::NoSuchThingHere.new(:$thing)
-            unless self!is_thing_in($thing, $!player_location);
+            unless self.thing_is_in($thing, $!player_location);
 
         die X::Adventure::NoSuchThingHere.new(:$thing)
             if %!hidden_things{$thing};
@@ -713,10 +713,10 @@ class Adventure::Engine {
             unless defined $!player_location;
 
         die X::Adventure::NoSuchThingHere.new(:$thing)
-            unless self!thing_in_room_or_inventory($thing, $!player_location);
+            unless self.thing_in_room_or_inventory($thing, $!player_location);
 
         die X::Adventure::NoSuchThingHere.new(:thing($in))
-            unless self!thing_in_room_or_inventory($in, $!player_location);
+            unless self.thing_in_room_or_inventory($in, $!player_location);
 
         die X::Adventure::ThingNotCarryable.new(:action<put>, :$thing)
             unless %!carryable_things{$thing};
@@ -778,7 +778,7 @@ class Adventure::Engine {
             unless defined $!player_location;
 
         die X::Adventure::NoSuchThingHere.new(:$thing)
-            unless self!thing_in_room_or_inventory($thing, $!player_location);
+            unless self.thing_in_room_or_inventory($thing, $!player_location);
 
         die X::Adventure::ThingNotReadable.new(:$thing)
             unless %!readable_things{$thing};
@@ -815,14 +815,14 @@ class Adventure::Engine {
             if $pitch_black;
 
         die X::Adventure::NoSuchThingHere.new(:$thing)
-            unless self!is_thing_in($thing, $!player_location);
+            unless self.thing_is_in($thing, $!player_location);
 
         die X::Adventure::ThingNotCarryable.new(:action<take>, :$thing)
             unless %!carryable_things{$thing};
 
         my @events;
         for %!remove_from_hooks.kv -> $container, &hook {
-            if self!is_thing_in($thing, "contents:$container") {
+            if self.thing_is_in($thing, "contents:$container") {
                 @events.push($_) when Event for &hook($thing);
             }
         }
@@ -866,7 +866,7 @@ class Adventure::Engine {
             unless defined $!player_location;
 
         die X::Adventure::NoSuchThingHere.new(:$thing)
-            unless self!thing_in_room_or_inventory($thing, $!player_location);
+            unless self.thing_in_room_or_inventory($thing, $!player_location);
 
         my @events = Adventure::PlayerUsed.new(:$thing);
         if %!light_sources{$thing} {
@@ -1032,8 +1032,13 @@ class Crypt::Game {
             .alias_direction: 'hall', 'out', 'north';
             .connect: <cave crypt>, 'northwest';
             .on_try_exit: 'cave', 'northwest', {
-                say "You try to walk past the fire, but it's too hot!";
-                False;
+                if .thing_is_in('fire', 'cave') {
+                    .remark('walk-past-fire-too-hot'),
+                    False;
+                }
+                else {
+                    True;
+                }
             };
             .make_room_dark: 'hall';
             .make_room_dark: 'cave';
@@ -2576,6 +2581,30 @@ multi MAIN('test') {
                 ),
             ],
             'putting out the fire with water';
+    }
+
+    sub game_after_putting_out_the_water {
+        my $game = game_after_hanoi_is_solved();
+
+        $game.take('helmet');
+        $game.walk('north');
+        $game.walk('north');
+        $game.put_thing_in('water', 'helmet');
+        $game.walk('south');
+        $game.walk('south');
+        $game.walk('down');
+        $game.put_thing_in('water', 'fire');
+        return $game;
+    }
+
+    {
+        my $game = game_after_putting_out_the_water();
+
+        is $game.walk('northwest')[0],
+            Adventure::PlayerWalked.new(
+                :to<crypt>,
+            ),
+            'after water is gone, can walk into crypt';
     }
 
     done;
