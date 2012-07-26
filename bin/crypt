@@ -351,6 +351,9 @@ class Adventure::LightSourceSwitchedOn does Event {
     has $.thing;
 }
 
+class Adventure::GameFinished does Event {
+}
+
 class X::Adventure is Exception {
 }
 
@@ -466,6 +469,12 @@ class X::Adventure::PitchBlack is X::Adventure {
     }
 }
 
+class X::Adventure::GameOver is X::Adventure {
+    method message {
+        "The game has already ended"
+    }
+}
+
 class Adventure::Engine {
     my @possible_directions = <
         north south east west
@@ -496,6 +505,7 @@ class Adventure::Engine {
     has %!things_shining;
     has %!remove_from_hooks;
     has %!take_hooks;
+    has $!game_finished;
 
     method connect(@rooms, $direction) {
         die X::Adventure::NoSuchDirection.new(:action('connect rooms'), :$direction)
@@ -563,6 +573,9 @@ class Adventure::Engine {
     }
 
     method walk($direction) {
+        die X::Adventure::GameOver.new()
+            if $!game_finished;
+
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
@@ -598,6 +611,9 @@ class Adventure::Engine {
     }
 
     method look() {
+        die X::Adventure::GameOver.new()
+            if $!game_finished;
+
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
@@ -641,6 +657,9 @@ class Adventure::Engine {
     }
 
     method examine($thing) {
+        die X::Adventure::GameOver.new()
+            if $!game_finished;
+
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
@@ -671,6 +690,9 @@ class Adventure::Engine {
     }
 
     method open($thing) {
+        die X::Adventure::GameOver.new()
+            if $!game_finished;
+
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
@@ -707,6 +729,9 @@ class Adventure::Engine {
     }
 
     method put_thing_in($thing, $in) {
+        die X::Adventure::GameOver.new()
+            if $!game_finished;
+
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
@@ -744,6 +769,9 @@ class Adventure::Engine {
     }
 
     method put_thing_on($thing, $on) {
+        die X::Adventure::GameOver.new()
+            if $!game_finished;
+
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
@@ -772,6 +800,9 @@ class Adventure::Engine {
     }
 
     method read($thing) {
+        die X::Adventure::GameOver.new()
+            if $!game_finished;
+
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
@@ -800,6 +831,9 @@ class Adventure::Engine {
     }
 
     method take($thing) {
+        die X::Adventure::GameOver.new()
+            if $!game_finished;
+
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
@@ -834,6 +868,9 @@ class Adventure::Engine {
     }
 
     method drop($thing) {
+        die X::Adventure::GameOver.new()
+            if $!game_finished;
+
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
@@ -860,6 +897,9 @@ class Adventure::Engine {
     }
 
     method use($thing) {
+        die X::Adventure::GameOver.new()
+            if $!game_finished;
+
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
@@ -875,6 +915,14 @@ class Adventure::Engine {
 
     method make_thing_a_light_source($thing) {
         my @events = Adventure::ThingMadeALightSource.new(:$thing);
+        self!apply_and_return: @events;
+    }
+
+    method finish() {
+        die X::Adventure::GameOver.new()
+            if $!game_finished;
+
+        my @events = Adventure::GameFinished.new();
         self!apply_and_return: @events;
     }
 
@@ -1003,6 +1051,9 @@ class Adventure::Engine {
         }
         when Adventure::PlayerPutIn {
             %!thing_rooms{.thing} = "contents:{.in}";
+        }
+        when Adventure::GameFinished {
+            $!game_finished = True;
         }
     }
 }
@@ -2618,6 +2669,16 @@ multi MAIN('test') {
                 :thing<water>,
             ),
             'dropping water in the helmet';
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.finish();
+        throws_exception
+            { $engine.walk('west') },
+            X::Adventure::GameOver,
+            'cannot do things once the game has finished';
     }
 
     done;
