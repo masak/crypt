@@ -639,6 +639,7 @@ class Adventure::Engine {
                    :exits((%!exits{$!player_location} // ()).keys),
                    :things(self!explicit_things_at($!player_location)),
                );
+        @events.push(self!tick);
         self!apply_and_return: @events;
     }
 
@@ -693,6 +694,7 @@ class Adventure::Engine {
         if %!examine_hooks{$thing} -> &hook {
             @events.push(&hook());
         }
+        @events.push(self!tick);
 
         self!apply_and_return: @events;
     }
@@ -732,6 +734,7 @@ class Adventure::Engine {
         if %!open_hooks{$thing} -> &hook {
             @events.push(&hook());
         }
+        @events.push(self!tick);
         self!apply_and_return: @events;
     }
 
@@ -771,6 +774,7 @@ class Adventure::Engine {
         if %!put_hooks{$in} -> &hook {
             @events.push($_) when Event for &hook($thing);
         }
+        @events.push(self!tick);
 
         self!apply_and_return: @events;
     }
@@ -803,6 +807,7 @@ class Adventure::Engine {
         if %!put_hooks{$on} -> &hook {
             @events.push($_) when Event for &hook($thing);
         }
+        @events.push(self!tick);
         self!apply_and_return: @events;
     }
 
@@ -824,7 +829,7 @@ class Adventure::Engine {
         die X::Adventure::ThingNotReadable.new(:$thing)
             unless %!readable_things{$thing};
 
-        Adventure::PlayerRead.new(:$thing);
+        Adventure::PlayerRead.new(:$thing), self!tick;
     }
 
     method hide_thing($thing) {
@@ -875,6 +880,7 @@ class Adventure::Engine {
         if %!take_hooks{$thing} -> &hook {
             @events.push($_) when Event for &hook();
         }
+        @events.push(self!tick);
         self!apply($_) for @events;
         return Adventure::PlayerTook.new(:$thing), @events;
     }
@@ -890,6 +896,7 @@ class Adventure::Engine {
             unless self.thing_is_in($thing, 'player inventory');
 
         my @events = Adventure::PlayerDropped.new(:$thing);
+        @events.push(self!tick);
         self!apply_and_return: @events;
     }
 
@@ -922,6 +929,7 @@ class Adventure::Engine {
         if %!light_sources{$thing} {
             @events.push(Adventure::LightSourceSwitchedOn.new(:$thing));
         }
+        @events.push(self!tick);
         self!apply_and_return: @events;
     }
 
