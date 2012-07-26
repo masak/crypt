@@ -506,6 +506,7 @@ class Adventure::Engine {
     has %!remove_from_hooks;
     has %!take_hooks;
     has $!game_finished;
+    has %!tick_hooks;
 
     method connect(@rooms, $direction) {
         die X::Adventure::NoSuchDirection.new(:action('connect rooms'), :$direction)
@@ -572,6 +573,16 @@ class Adventure::Engine {
         return False;
     }
 
+    method !tick() {
+        my @events;
+        for %!tick_hooks.kv -> $name, %props {
+            if --%props<ticks> == 0 {
+                @events.push(%props<hook>());
+            }
+        }
+        return @events;
+    }
+
     method walk($direction) {
         die X::Adventure::GameOver.new()
             if $!game_finished;
@@ -607,6 +618,7 @@ class Adventure::Engine {
                 ));
             }
         }
+        @events.push(self!tick);
         self!apply_and_return: @events;
     }
 
@@ -948,6 +960,10 @@ class Adventure::Engine {
 
     method on_take($thing, &hook) {
         %!take_hooks{$thing} = &hook;
+    }
+
+    method light_fuse($n, $name, &hook) {
+        %!tick_hooks{$name} = { :ticks($n), :&hook };
     }
 
     my class Save {
@@ -2679,6 +2695,26 @@ multi MAIN('test') {
             { $engine.walk('west') },
             X::Adventure::GameOver,
             'cannot do things once the game has finished';
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        my @rooms = <kitchen veranda>;
+        $engine.connect(@rooms, my $direction = 'south');
+        $engine.place_player('kitchen');
+        $engine.light_fuse(3, 'end_game', { $engine.finish });
+        $engine.walk('south');
+        $engine.walk('north');
+        is $engine.walk('south'),
+            [
+                Adventure::PlayerWalked.new(
+                    :to<veranda>,
+                ),
+                Adventure::GameFinished.new(
+                ),
+            ],
+            'counting down to a hook auto-activating';
     }
 
     done;
