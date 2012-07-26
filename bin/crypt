@@ -966,6 +966,10 @@ class Adventure::Engine {
         %!tick_hooks{$name} = { :ticks($n), :&hook };
     }
 
+    method put_out_fuse($name) {
+        %!tick_hooks.delete($name);
+    }
+
     my class Save {
         has @.events;
     }
@@ -2715,6 +2719,23 @@ multi MAIN('test') {
                 ),
             ],
             'counting down to a hook auto-activating';
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        my @rooms = <kitchen veranda>;
+        $engine.connect(@rooms, my $direction = 'south');
+        $engine.place_player('kitchen');
+        $engine.light_fuse(3, 'end_game', { $engine.finish });
+        $engine.walk('south');
+        $engine.walk('north');
+        $engine.put_out_fuse('end_game');
+        is $engine.walk('south'),
+            Adventure::PlayerWalked.new(
+                :to<veranda>,
+            ),
+            'putting out a fuse so it does not activate';
     }
 
     done;
