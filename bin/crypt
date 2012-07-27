@@ -601,27 +601,32 @@ class Adventure::Engine {
         die X::Adventure::NoExitThere.new(:$direction)
             unless defined $to;
 
+        my @events;
+        my $walk = True;
         if %!try_exit_hooks{$!player_location}{$actual_direction} -> &hook {
-            return unless &hook();
+            @events.push(&hook());
+            $walk = @events.pop;
         }
 
-        my @events = Adventure::PlayerWalked.new(:$to);
-        unless %!seen_room{$to}++ {
-            my $pitch_black = %!dark_rooms{$to}
-                && !self!shining_thing_here($to);
+        if $walk {
+            @events.push(Adventure::PlayerWalked.new(:$to));
+            unless %!seen_room{$to}++ {
+                my $pitch_black = %!dark_rooms{$to}
+                    && !self!shining_thing_here($to);
 
-            if $pitch_black {
-                @events.push(Adventure::PlayerLookedAtDarkness.new());
+                if $pitch_black {
+                    @events.push(Adventure::PlayerLookedAtDarkness.new());
+                }
+                else {
+                    @events.push(Adventure::PlayerLooked.new(
+                        :room($to),
+                        :exits((%!exits{$to} // ()).keys),
+                        :things(self!explicit_things_at($to)),
+                    ));
+                }
             }
-            else {
-                @events.push(Adventure::PlayerLooked.new(
-                    :room($to),
-                    :exits((%!exits{$to} // ()).keys),
-                    :things(self!explicit_things_at($to)),
-                ));
-            }
+            @events.push(self!tick);
         }
-        @events.push(self!tick);
         self!apply_and_return: @events;
     }
 
@@ -1106,6 +1111,16 @@ class Crypt::Game {
             .connect: <clearing hill>, 'east';
             .alias_direction: 'hill', 'in', 'south';
             .alias_direction: 'chamber', 'out', 'north';
+            .on_try_exit: 'chamber', 'north', {
+                if .thing_is_in('butterfly', 'player inventory') {
+                    .remark('made-it-out-with-treasure'),
+                    .finish(),
+                    False;
+                }
+                else {
+                    True;
+                }
+            };
             .alias_direction: 'chamber', 'in', 'south';
             .alias_direction: 'hall', 'out', 'north';
             .connect: <cave crypt>, 'northwest';
@@ -1211,10 +1226,20 @@ class Crypt::Game {
             # Things in crypt
             .place_thing: 'pedestal', 'crypt';
             .make_thing_a_platform: 'pedestal';
+            .on_put:
+                'pedestal',
+                -> $_ {
+                    when 'butterfly' | 'tiny disk' {
+                        # XXX: Need to change signature of .put_out_fuse to
+                        # accept a closure, to be run if there was a fuse to
+                        # put out.
+                        $!engine.put_out_fuse('cavern-collapse');
+                    }
+                };
             .on_remove_from:
                 'pedestal',
                 -> $_ {
-                    when 'butterfly' | 'small disk' {
+                    when 'butterfly' | 'tiny disk' {
                         # XXX: Should be 3, will fix when getting sagas
                         $!engine.light_fuse(4, 'cavern-collapse', {
                             $!engine.remark('cavern-collapses'),
@@ -2686,7 +2711,7 @@ multi MAIN('test') {
             'putting out the fire with water';
     }
 
-    sub game_after_putting_out_the_water {
+    sub game_after_putting_out_the_fire {
         my $game = game_after_hanoi_is_solved();
 
         $game.take('helmet');
@@ -2701,7 +2726,7 @@ multi MAIN('test') {
     }
 
     {
-        my $game = game_after_putting_out_the_water();
+        my $game = game_after_putting_out_the_fire();
 
         is $game.walk('northwest')[0],
             Adventure::PlayerWalked.new(
@@ -2773,7 +2798,7 @@ multi MAIN('test') {
     }
 
     sub game_from_crypt {
-        my $game = game_after_putting_out_the_water();
+        my $game = game_after_putting_out_the_fire();
 
         $game.walk('northwest');
         return $game;
@@ -2833,6 +2858,29 @@ multi MAIN('test') {
                 ),
             ],
             'can take the tiny disk from the hanoi game';
+    }
+
+    {
+        my $game = game_after_putting_out_the_fire();
+
+        $game.walk('up');
+        $game.take('tiny disk');
+        $game.walk('down');
+        $game.walk('northwest');
+        $game.take('butterfly');
+        $game.put_thing_on('tiny disk', 'pedestal');
+        $game.walk('southeast');
+        $game.walk('up');
+        $game.walk('north');
+        is $game.walk('north'),
+            [
+                Adventure::GameRemarked.new(
+                    :remark<made-it-out-with-treasure>,
+                ),
+                Adventure::GameFinished.new(
+                ),
+            ],
+            'making it out alive with the treasure';
     }
 
     done;
