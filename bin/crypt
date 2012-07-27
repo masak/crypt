@@ -556,6 +556,9 @@ class Adventure::Engine {
                 if %!containers{$thing}
                 && (!%!openable_things{$thing} || %!open_things{$thing})
                 && self.thing_is_in($sought, "contents:$thing");
+            return True
+                if %!platforms{$thing}
+                && self.thing_is_in($sought, "contents:$thing");
         }
         return False;
     }
@@ -1205,6 +1208,19 @@ class Crypt::Game {
                         $!engine.place_thing('fire', 'nowhere');
                     }
                 };
+
+            # Things in crypt
+            .place_thing: 'pedestal', 'crypt';
+            .make_thing_a_platform: 'pedestal';
+            .on_remove_from:
+                'pedestal',
+                -> $_ {
+                    when 'butterfly' | 'small disk' {
+                        $!engine.remark('alarm-starts');
+                    }
+                };
+            .place_thing: 'butterfly', 'contents:pedestal';
+            .make_thing_carryable: 'butterfly';
 
             .place_player: $!player_location = 'clearing';
         }
@@ -2744,6 +2760,28 @@ multi MAIN('test') {
                 :to<veranda>,
             ),
             'putting out a fuse so it does not activate';
+    }
+
+    sub game_from_crypt {
+        my $game = game_after_putting_out_the_water();
+
+        $game.walk('northwest');
+        return $game;
+    }
+
+    {
+        my $game = game_from_crypt();
+
+        is $game.take('butterfly'),
+            [
+                Adventure::PlayerTook.new(
+                    :thing<butterfly>,
+                ),
+                Adventure::GameRemarked.new(
+                    :remark<alarm-starts>,
+                ),
+            ],
+            'taking the butterfly triggers an alarm';
     }
 
     done;
