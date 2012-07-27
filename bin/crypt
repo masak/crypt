@@ -1191,6 +1191,7 @@ class Crypt::Game {
                 };
 
             # Things in hall
+            .make_thing_carryable: 'tiny disk';
             .place_thing: 'helmet', 'hall';
             .make_thing_carryable: 'helmet';
             .make_thing_a_container: 'helmet';
@@ -1257,7 +1258,13 @@ class Crypt::Game {
     }
 
     method take($thing) {
-        return $!engine.take($thing);
+        my @events;
+        if $thing eq 'tiny disk' {
+            @events.push:
+                $!hanoi.remove('tiny disk'),
+                $!engine.place_thing('tiny disk', 'hall');
+        }
+        return @events, $!engine.take($thing);
     }
 
     method drop($thing) {
@@ -2805,6 +2812,27 @@ multi MAIN('test') {
                 ),
             ],
             'not getting out in time before the cavern collapses';
+    }
+
+    {
+        my $game = game_from_hall();
+
+        $game.use('flashlight');
+        is $game.take('tiny disk'),
+            [
+                Hanoi::DiskRemoved.new(
+                    :disk('tiny disk'),
+                    :source<left>,
+                ),
+                Adventure::ThingPlaced.new(
+                    :thing('tiny disk'),
+                    :room<hall>,
+                ),
+                Adventure::PlayerTook.new(
+                    :thing('tiny disk'),
+                ),
+            ],
+            'can take the tiny disk from the hanoi game';
     }
 
     done;
