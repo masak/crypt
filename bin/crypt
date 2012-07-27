@@ -642,7 +642,6 @@ class Adventure::Engine {
                    :exits((%!exits{$!player_location} // ()).keys),
                    :things(self!explicit_things_at($!player_location)),
                );
-        @events.push(self!tick);
         self!apply_and_return: @events;
     }
 
@@ -697,7 +696,6 @@ class Adventure::Engine {
         if %!examine_hooks{$thing} -> &hook {
             @events.push(&hook());
         }
-        @events.push(self!tick);
 
         self!apply_and_return: @events;
     }
@@ -1216,6 +1214,11 @@ class Crypt::Game {
                 'pedestal',
                 -> $_ {
                     when 'butterfly' | 'small disk' {
+                        # XXX: Should be 3, will fix when getting sagas
+                        $!engine.light_fuse(4, 'cavern-collapse', {
+                            $!engine.remark('cavern-collapses'),
+                            $!engine.finish();
+                        });
                         $!engine.remark('alarm-starts');
                     }
                 };
@@ -2782,6 +2785,26 @@ multi MAIN('test') {
                 ),
             ],
             'taking the butterfly triggers an alarm';
+    }
+
+    {
+        my $game = game_from_crypt();
+
+        $game.take('butterfly');
+        $game.walk('southeast');
+        $game.walk('up');
+        is $game.walk('north'),
+            [
+                Adventure::PlayerWalked.new(
+                    :to<chamber>,
+                ),
+                Adventure::GameRemarked.new(
+                    :remark<cavern-collapses>,
+                ),
+                Adventure::GameFinished.new(
+                ),
+            ],
+            'not getting out in time before the cavern collapses';
     }
 
     done;

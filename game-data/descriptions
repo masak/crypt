@@ -101,3 +101,8 @@ You try to walk past the fire, but it's too hot!
 
 == remark:alarm-starts
 An alarm starts sounding in the whole cavern.
+
+== remark:cavern-collapses
+The alarm starts sounding louder.
+The whole cavern shakes, and falls in on itself.
+You die.
