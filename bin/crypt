@@ -354,6 +354,10 @@ class Adventure::LightSourceSwitchedOn does Event {
 class Adventure::GameFinished does Event {
 }
 
+class Adventure::PlayerCheckedInventory does Event {
+    has @.things;
+}
+
 class X::Adventure is Exception {
 }
 
@@ -697,6 +701,24 @@ class Adventure::Engine {
 
         my @events = Adventure::PlayerExamined.new(
             :$thing
+        );
+        if %!examine_hooks{$thing} -> &hook {
+            @events.push(&hook());
+        }
+
+        self!apply_and_return: @events;
+    }
+
+    method inventory() {
+        die X::Adventure::GameOver.new()
+            if $!game_finished;
+
+        die X::Adventure::PlayerNowhere.new()
+            unless defined $!player_location;
+
+        my $thing = 'player inventory';
+        my @events = Adventure::PlayerCheckedInventory.new(
+            :things(self!explicit_things_at('player inventory'))
         );
         if %!examine_hooks{$thing} -> &hook {
             @events.push(&hook());
@@ -1309,6 +1331,10 @@ class Crypt::Game {
         return $!engine.examine($thing);
     }
 
+    method inventory() {
+        return $!engine.inventory();
+    }
+
     method take($thing) {
         my @events;
         if $thing eq 'tiny disk' {
@@ -1444,7 +1470,8 @@ look                         | take banana
 examine banana               | drop banana
 [walk] north/south/east/west | put banana in bag
        (or just n/s/e/w)     | place banana on throne
-open bag                     | close bag";
+open bag                     | close bag
+inventory";
             }
 
             when 'save' {
@@ -1586,6 +1613,27 @@ open bag                     | close bag";
                     when Hanoi::DiskMoved {
                         say "You put the {.disk} on the {.target} rod.";
                         print_hanoi_game(@all_events);
+                    }
+                    when Adventure::PlayerCheckedInventory {
+                        if .things {
+                            say "You are carrying:";
+                            for .things -> $thing {
+                                if $thing ~~ Pair {
+                                    say "A $thing.key().";
+                                    # XXX: Needs to work for nested calls, too
+                                    say "The $thing.key() contains:";
+                                    for $thing.value.list -> $containee {
+                                        say "  A $containee.";
+                                    }
+                                }
+                                else {
+                                    say "A $thing.";
+                                }
+                            }
+                        }
+                        else {
+                            say "You are empty-handed.";
+                        }
                     }
                 }
                 CATCH {
