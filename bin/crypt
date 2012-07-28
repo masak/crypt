@@ -1397,10 +1397,14 @@ multi MAIN() {
             $command .= trim;
 
             when /^help>>/|"h"|"?" {
-                say "Here are some (made-up) examples of commands you can use:";
-                say "";
-                say "look";
-                say "[walk] north/south/east/west";
+                .say given # poor man's heredoc
+"Here are some (made-up) examples of commands you can use:
+
+look                         | take banana
+examine banana               | drop banana
+[walk] north/south/east/west | put banana in bag
+       (or just n/s/e/w)     | place banana on throne
+open bag                     | close bag";
             }
 
             when 'save' {
