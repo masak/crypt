@@ -690,7 +690,7 @@ class Adventure::Engine {
             if $pitch_black;
 
         die X::Adventure::NoSuchThingHere.new(:$thing)
-            unless self.thing_is_in($thing, $!player_location);
+            unless self.thing_in_room_or_inventory($thing, $!player_location);
 
         die X::Adventure::NoSuchThingHere.new(:$thing)
             if %!hidden_things{$thing};
@@ -717,7 +717,7 @@ class Adventure::Engine {
             unless defined $!player_location;
 
         die X::Adventure::NoSuchThingHere.new(:$thing)
-            unless (%!thing_rooms{$thing} // '') eq $!player_location;
+            unless self.thing_in_room_or_inventory($thing, $!player_location);
 
         die X::Adventure::NoSuchThingHere.new(:$thing)
             if %!hidden_things{$thing};
@@ -759,8 +759,14 @@ class Adventure::Engine {
         die X::Adventure::NoSuchThingHere.new(:$thing)
             unless self.thing_in_room_or_inventory($thing, $!player_location);
 
+        die X::Adventure::NoSuchThingHere.new(:$thing)
+            if %!hidden_things{$thing};
+
         die X::Adventure::NoSuchThingHere.new(:thing($in))
             unless self.thing_in_room_or_inventory($in, $!player_location);
+
+        die X::Adventure::NoSuchThingHere.new(:$thing)
+            if %!hidden_things{$in};
 
         die X::Adventure::ThingNotCarryable.new(:action<put>, :$thing)
             unless %!carryable_things{$thing};
@@ -797,8 +803,17 @@ class Adventure::Engine {
         die X::Adventure::PlayerNowhere.new()
             unless defined $!player_location;
 
-        # XXX: should check if the first thing is there
-        # XXX: should check if the second thing is there
+        die X::Adventure::NoSuchThingHere.new(:$thing)
+            unless self.thing_in_room_or_inventory($thing, $!player_location);
+
+        die X::Adventure::NoSuchThingHere.new(:$thing)
+            if %!hidden_things{$thing};
+
+        die X::Adventure::NoSuchThingHere.new(:thing($on))
+            unless self.thing_in_room_or_inventory($on, $!player_location);
+
+        die X::Adventure::NoSuchThingHere.new(:$thing)
+            if %!hidden_things{$on};
 
         die X::Adventure::ThingNotCarryable.new(:action<put>, :$thing)
             unless %!carryable_things{$thing};
@@ -831,6 +846,9 @@ class Adventure::Engine {
 
         die X::Adventure::NoSuchThingHere.new(:$thing)
             unless self.thing_in_room_or_inventory($thing, $!player_location);
+
+        die X::Adventure::NoSuchThingHere.new(:$thing)
+            if %!hidden_things{$thing};
 
         die X::Adventure::ThingNotReadable.new(:$thing)
             unless %!readable_things{$thing};
@@ -872,6 +890,9 @@ class Adventure::Engine {
         die X::Adventure::NoSuchThingHere.new(:$thing)
             unless self.thing_is_in($thing, $!player_location);
 
+        die X::Adventure::NoSuchThingHere.new(:$thing)
+            if %!hidden_things{$thing};
+
         die X::Adventure::ThingNotCarryable.new(:action<take>, :$thing)
             unless %!carryable_things{$thing};
 
@@ -900,6 +921,9 @@ class Adventure::Engine {
 
         die X::Adventure::PlayerDoesNotHave.new(:$thing)
             unless self.thing_is_in($thing, 'player inventory');
+
+        die X::Adventure::PlayerDoesNotHave.new(:$thing)
+            if %!hidden_things{$thing};
 
         my @events = Adventure::PlayerDropped.new(:$thing);
         @events.push(self!tick);
@@ -930,6 +954,9 @@ class Adventure::Engine {
 
         die X::Adventure::NoSuchThingHere.new(:$thing)
             unless self.thing_in_room_or_inventory($thing, $!player_location);
+
+        die X::Adventure::NoSuchThingHere.new(:$thing)
+            if %!hidden_things{$thing};
 
         my @events = Adventure::PlayerUsed.new(:$thing);
         if %!light_sources{$thing} {
@@ -2903,6 +2930,20 @@ multi MAIN('test') {
                 ),
             ],
             'making it out alive with the treasure';
+    }
+
+    {
+        my $engine = Adventure::Engine.new();
+
+        $engine.place_thing('box', 'saloon');
+        $engine.make_thing_carryable('box');
+        $engine.place_player('saloon');
+        $engine.take('box');
+        is $engine.examine('box'),
+            Adventure::PlayerExamined.new(
+                :thing<box>,
+            ),
+            'examining a thing (+) in inventory';
     }
 
     done;
