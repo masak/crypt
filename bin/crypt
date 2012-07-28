@@ -1374,6 +1374,19 @@ multi MAIN() {
         up down in out
     >;
 
+    my %abbr_directions = <
+        n  north
+        s  south
+        e  east
+        w  west
+        ne northeast
+        nw northwest
+        se southeast
+        sw southwest
+        u  up
+        d  down
+    >;
+
     given 'clearing' {
         say .ucfirst;
         say "";
@@ -1446,6 +1459,11 @@ open bag                     | close bag";
                         }
                     }
                 }
+            }
+
+            when /^ [''|go \h+|walk \h+] (\w+) <?{ %abbr_directions{$0} }> $/ {
+                $command = "walk %abbr_directions{$0}";
+                proceed;
             }
 
             when any @possible_directions {
