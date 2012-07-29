@@ -555,6 +555,8 @@ class Adventure::Engine {
 
     method thing_is_in($sought, $location) {
         return unless $location;
+        return False
+            if %!hidden_things{$sought};
         for %!thing_rooms.keys -> $thing {
             next unless %!thing_rooms{$thing} eq $location;
             return True
