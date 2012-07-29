@@ -1522,8 +1522,17 @@ inventory";
                             say "";
                         }
                         for .things -> $thing {
+                            sub announce($thing) {
+                                if %descriptions{"phrase:$thing"} -> $phrase {
+                                    say sprintf $phrase, $thing;
+                                }
+                                else {
+                                    say "There is a $thing here.";
+                                }
+                            }
+
                             if $thing ~~ Pair {
-                                say "There is a $thing.key() here.";
+                                announce $thing.key;
                                 # XXX: Needs to work for nested calls, too
                                 say "The $thing.key() contains:";
                                 for $thing.value.list -> $containee {
@@ -1531,7 +1540,7 @@ inventory";
                                 }
                             }
                             else {
-                                say "There is a $thing here.";
+                                announce $thing;
                             }
                         }
                         if .exits {
@@ -1624,8 +1633,17 @@ inventory";
                             say "";
                         }
                         for .things -> $thing {
+                            sub announce($thing) {
+                                if %descriptions{"phrase:$thing"} -> $phrase {
+                                    say sprintf $phrase, $thing;
+                                }
+                                else {
+                                    say "There is a $thing here.";
+                                }
+                            }
+
                             if $thing ~~ Pair {
-                                say "There is a $thing.key() here.";
+                                announce $thing.key;
                                 # XXX: Needs to work for nested calls, too
                                 say "The $thing.key() contains:";
                                 for $thing.value.list -> $containee {
@@ -1633,7 +1651,7 @@ inventory";
                                 }
                             }
                             else {
-                                say "There is a $thing here.";
+                                announce $thing;
                             }
                         }
                         if .exits {
@@ -1672,8 +1690,17 @@ inventory";
                         if .things {
                             say "You are carrying:";
                             for .things -> $thing {
+                                sub announce($thing) {
+                                    if %descriptions{"phrase:$thing"} -> $phrase {
+                                        say sprintf $phrase, $thing;
+                                    }
+                                    else {
+                                        say "A $thing.";
+                                    }
+                                }
+
                                 if $thing ~~ Pair {
-                                    say "A $thing.key().";
+                                    announce $thing.key;
                                     # XXX: Needs to work for nested calls, too
                                     say "The $thing.key() contains:";
                                     for $thing.value.list -> $containee {
@@ -1681,7 +1708,7 @@ inventory";
                                     }
                                 }
                                 else {
-                                    say "A $thing.";
+                                    announce $thing;
                                 }
                             }
                         }

@@ -122,3 +122,15 @@ You die.
 == remark:made-it-out-with-treasure
 Congratulations! You found the treasure and got out with it
 alive!
+
+== phrase:car
+Your %s is parked here.
+
+== phrase:leaves
+69,105 %s.
+
+== phrase:brook
+A small %s runs through the forest.
+
+== phrase:water
+Some %s.
