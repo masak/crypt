@@ -1287,7 +1287,7 @@ class Crypt::Game {
                 -> $_ {
                     when 'water' {
                         $!engine.remark('fire-dies'),
-                        $!engine.place_thing('fire', 'nowhere');
+                        $!engine.hide_thing('fire');
                     }
                 };
 
@@ -2849,9 +2849,8 @@ multi MAIN('test') {
                 Adventure::GameRemarked.new(
                     :remark<fire-dies>,
                 ),
-                Adventure::ThingPlaced.new(
+                Adventure::ThingHidden.new(
                     :thing<fire>,
-                    :room<nowhere>,
                 ),
             ],
             'putting out the fire with water';
