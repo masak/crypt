@@ -1440,6 +1440,23 @@ multi MAIN() {
     }
     my %commands = map { $^m.name => params($m) }, $game.^methods;
 
+    my %verb_synonyms =
+        "go"        => "walk",
+        "l"         => "look",
+        "x"         => "examine",
+        "place"     => "put",
+        "put"       => "put",
+        "pick"      => "take",
+        "pick up"   => "take",
+        "get"       => "take",
+        "retrieve"  => "take",
+        "retreive"  => "take",  # might as well
+        "turn on"   => "use",
+        "switch on" => "use",
+        "i"         => "inventory",
+    ;
+    my @verbs = %commands.keys, %verb_synonyms.keys;
+
     my @possible_directions = <
         north south east west
         northeast northwest southeast southwest
@@ -1522,10 +1539,45 @@ inventory";
                 }
             }
 
-            when /^ [''|go \h+] (\w+)
-                    <?{ $0 eq any @possible_directions }> $/ {
-                $command = "walk $0";
+            when any @possible_directions {
+                $command = "walk $command";
                 proceed;
+            }
+
+            my grammar Command {
+                regex TOP {
+                    ^
+                    [
+                    | $<verb>='move' \h+ $<arg1>=[\w+] \h+ $<arg2>=[\w+]
+                    | <verb>
+                      [
+                          \h+ ['the' \h+]? $<arg1>=<.noun>
+                          [
+                              \h+ <prep> \h+ ['the' \h+]? $<arg2>=<.noun>
+                          ]?
+                      ]?
+                    ]
+                    $
+                }
+                regex verb { \w+ [\h+ \w+]?? <?{ $/ eq any @verbs }> }
+                regex noun { \w+ [\h+ 'disk']? }
+                regex prep { 'in' | 'on' }
+            }
+
+            when !Command.parse($command) {
+                say "Sorry, I did not understand that.";
+            }
+
+            my $verb = %verb_synonyms{$<verb>} // ~$<verb>;
+            my @args;
+            if $<arg1> {
+                push @args, ~$<arg1>;
+                if $<arg2> {
+                    if $verb eq 'put' {
+                        $verb = "put_thing_$<prep>";
+                    }
+                    push @args, ~$<arg2>;
+                }
             }
 
             when /^ :s [move|put] [the]?
@@ -1534,7 +1586,9 @@ inventory";
                     $<target>=[left||middle||right]
                     rod $/ {
 
-                $command = "move $<disk> $<target>";
+                $verb = 'move';
+                @args = ~$<disk>, ~$<target>;
+                proceed;
             }
 
             when /^ :s [move|put] [the]?
@@ -1543,18 +1597,11 @@ inventory";
                     $<target>=[left||middle||right]
                     rod $/ {
 
-                $command = "move $<source> $<target>";
-            }
-
-            when /^ 'put' \h+ (\w+) \h+ ('in'|'on') \h+ (\w+) $/ {
-                $command = "put_thing_$1 $0 $2";
+                $verb = 'move';
+                @args = ~$<source>, ~$<target>;
                 proceed;
             }
 
-            sub munge   { $^s.subst(/' disk'»/, '_disk', :g) }
-            sub unmunge { $^s.subst(/'_disk'»/, ' disk', :g) }
-            my $verb = .&munge.words[0].&unmunge;
-            my @args = .&munge.words[1..*]».&unmunge;
             when %commands.exists($verb) {
                 my @req_args = %commands{$verb}.list;
                 when @args != @req_args {
@@ -1644,11 +1691,8 @@ inventory";
                 CATCH {
                     when X::Adventure { say .message, '.' }
                     when X::Hanoi { say .message, '.' }
+                    when X::Crypt { say .message, '.' }
                 }
-            }
-
-            default {
-                say "Sorry, I did not understand that.";
             }
         }
         say "";
