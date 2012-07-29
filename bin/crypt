@@ -1470,7 +1470,7 @@ multi MAIN() {
         say .ucfirst;
         say "";
         say %descriptions{$_};
-        say "There is a car here.";
+        say "Your car is parked here.";
         say "You can go east.";
         say "";
     }
