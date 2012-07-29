@@ -536,13 +536,15 @@ class Adventure::Engine {
     method !explicit_things_at($location) {
         sub here_visible_and_explicit($_) {
             %!thing_rooms{$_} eq $location
-                && !%!hidden_things{$_} && !%!implicit_things{$_}
+                && !%!hidden_things{$_}
+                && ($location ~~ /^contents':'/ || !%!implicit_things{$_})
         }
 
         return unless $location;
         return gather for %!thing_rooms.keys -> $thing {
             next unless here_visible_and_explicit($thing);
-            if %!open_things{$thing} && self!contents_of($thing) {
+            if (!%!openable_things{$thing} || %!open_things{$thing})
+                && self!contents_of($thing) {
                 take $thing => self!explicit_things_at("contents:$thing");
             }
             else {
