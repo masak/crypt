@@ -362,10 +362,11 @@ class X::Adventure is Exception {
 }
 
 class X::Adventure::NoSuchDirection is X::Adventure {
+    has $.action;
     has $.direction;
 
     method message {
-        "Cannot connect rooms because direction '$.direction' does not exist"
+        "Cannot $.action because direction '$.direction' does not exist"
     }
 }
 
@@ -590,6 +591,19 @@ class Adventure::Engine {
         return @events;
     }
 
+    my %abbr_directions = <
+        n  north
+        s  south
+        e  east
+        w  west
+        ne northeast
+        nw northwest
+        se southeast
+        sw southwest
+        u  up
+        d  down
+    >;
+
     method walk($direction) {
         die X::Adventure::GameOver.new()
             if $!game_finished;
@@ -598,7 +612,12 @@ class Adventure::Engine {
             unless defined $!player_location;
 
         my $actual_direction =
-            %!exit_aliases{$!player_location}{$direction} // $direction;
+            %!exit_aliases{$!player_location}{$direction}
+            // %abbr_directions{$direction}
+            // $direction;
+
+        die X::Adventure::NoSuchDirection.new(:action('walk that way'), :$direction)
+            unless $actual_direction eq any(@possible_directions);
 
         my $to = %!exits{$!player_location}{$actual_direction};
 
@@ -1425,19 +1444,7 @@ multi MAIN() {
         north south east west
         northeast northwest southeast southwest
         up down in out
-    >;
-
-    my %abbr_directions = <
-        n  north
-        s  south
-        e  east
-        w  west
-        ne northeast
-        nw northwest
-        se southeast
-        sw southwest
-        u  up
-        d  down
+        n s e w ne nw se sw u d
     >;
 
     given 'clearing' {
@@ -1515,13 +1522,9 @@ inventory";
                 }
             }
 
-            when /^ [''|go \h+|walk \h+] (\w+) <?{ %abbr_directions{$0} }> $/ {
-                $command = "walk %abbr_directions{$0}";
-                proceed;
-            }
-
-            when any @possible_directions {
-                $command = "walk $command";
+            when /^ [''|go \h+] (\w+)
+                    <?{ $0 eq any @possible_directions }> $/ {
+                $command = "walk $0";
                 proceed;
             }
 
@@ -2994,6 +2997,23 @@ multi MAIN('test') {
                 :thing<box>,
             ),
             'examining a thing (+) in inventory';
+    }
+
+    {
+        my $game = Crypt::Game.new();
+
+        is $game.walk('e'),
+            [
+                Adventure::PlayerWalked.new(
+                    :to<hill>,
+                ),
+                Adventure::PlayerLooked.new(
+                    :room<hill>,
+                    :exits<west>,
+                    :things<brook>,
+                ),
+            ],
+            'walking (+) abbreviated directions';
     }
 
     done;
