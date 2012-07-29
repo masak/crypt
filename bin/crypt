@@ -1548,8 +1548,10 @@ inventory";
                 proceed;
             }
 
-            my $verb = $command.words[0];
-            my @args = $command.words[1..*];
+            sub munge   { $^s.subst(/' disk'»/, '_disk', :g) }
+            sub unmunge { $^s.subst(/'_disk'»/, ' disk', :g) }
+            my $verb = .&munge.words[0].&unmunge;
+            my @args = .&munge.words[1..*]».&unmunge;
             when %commands.exists($verb) {
                 my @req_args = %commands{$verb}.list;
                 when @args != @req_args {
