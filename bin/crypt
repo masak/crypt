@@ -1318,7 +1318,8 @@ class Crypt::Game {
                         # XXX: Need to change signature of .put_out_fuse to
                         # accept a closure, to be run if there was a fuse to
                         # put out.
-                        $!engine.put_out_fuse('cavern-collapse');
+                        $!engine.put_out_fuse('cavern-collapse'),
+                        $!engine.remark('alarm-stops');
                     }
                 };
             .on_remove_from:
@@ -1329,7 +1330,7 @@ class Crypt::Game {
                         $!engine.light_fuse(4, 'cavern-collapse', {
                             $!engine.remark('cavern-collapses'),
                             $!engine.finish();
-                        });
+                        }),
                         $!engine.remark('alarm-starts');
                     }
                 };
