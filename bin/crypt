@@ -1708,7 +1708,7 @@ inventory";
                     }
                     when Adventure::PlayerPutOn {
                         say "You put the {.thing} on the {.on}.";
-                        if .thing eq 'tiny disk' {
+                        if .thing eq 'tiny disk' && .on ~~ /' rod'/ {
                             $player_has_tiny_disk = False;
                             print_hanoi_game(@all_events);
                             say "";
