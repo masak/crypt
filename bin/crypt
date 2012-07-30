@@ -1490,6 +1490,7 @@ multi MAIN() {
     }
 
     my @all_events;
+    my $player_has_tiny_disk = False;
 
     loop {
         my $command = prompt('> ');
@@ -1585,7 +1586,7 @@ inventory";
                     $
                 }
                 regex verb { \w+ [\h+ \w+]?? <?{ $/ eq any @verbs }> }
-                regex noun { \w+ [\h+ 'disk']? }
+                regex noun { \w+ [\h+ ['disk'|'rod']]? }
                 regex prep { 'in' | 'on' }
             }
 
@@ -1606,21 +1607,23 @@ inventory";
             }
 
             when /^ :s [move|put] [the]?
-                    $<disk>=[tiny||small||medium||large||huge]
-                    disk [on|to] [the]?
+                    $<disk>=[[tiny||small||medium||large||huge] disk]
+                    [on|to] [the]?
                     $<target>=[left||middle||right]
-                    rod $/ {
+                    [rod]? $/ {
 
-                $verb = 'move';
-                @args = ~$<disk>, ~$<target>;
+                unless $<disk> eq 'tiny disk' && $player_has_tiny_disk {
+                    $verb = 'move';
+                    @args = ~$<disk>, ~$<target>;
+                }
                 proceed;
             }
 
             when /^ :s [move|put] [the]?
                     $<source>=[left||middle||right]
-                    disk [on|to] [the]?
+                    [disk|rod] [on|to] [the]?
                     $<target>=[left||middle||right]
-                    rod $/ {
+                    [rod]? $/ {
 
                 $verb = 'move';
                 @args = ~$<source>, ~$<target>;
@@ -1680,6 +1683,9 @@ inventory";
                     }
                     when Adventure::PlayerTook {
                         say "You take the {.thing}.";
+                        if .thing eq 'tiny disk' {
+                            $player_has_tiny_disk = True;
+                        }
                     }
                     when Adventure::PlayerDropped {
                         say "You drop the {.thing} on the ground.";
@@ -1689,6 +1695,14 @@ inventory";
                     }
                     when Adventure::PlayerPutIn {
                         say "You put the {.thing} in the {.in}.";
+                    }
+                    when Adventure::PlayerPutOn {
+                        say "You put the {.thing} on the {.on}.";
+                        if .thing eq 'tiny disk' {
+                            $player_has_tiny_disk = False;
+                            print_hanoi_game(@all_events);
+                            say "";
+                        }
                     }
                     when Adventure::GameRemarked {
                         say %descriptions{"remark:{.remark}"};
