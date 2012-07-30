@@ -1755,6 +1755,9 @@ inventory";
                             say "You are empty-handed.";
                         }
                     }
+                    when Adventure::GameFinished {
+                        exit;
+                    }
                 }
                 CATCH {
                     when X::Adventure { say .message, '.' }
