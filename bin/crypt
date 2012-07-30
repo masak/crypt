@@ -1388,6 +1388,13 @@ class Crypt::Game {
         my @events = $!engine.put_thing_on($thing, $on);
         if $thing eq 'tiny disk' && $on ~~ /^ (\w+) ' rod' $/ {
             @events.push: $!hanoi.add: $thing, ~$0;
+            for @events {
+                when Hanoi::AchievementUnlocked {
+                    push @events,
+                        $!engine.remark('floor-reveals-hole'),
+                        $!engine.connect(<hall cave>, 'down');
+                }
+            }
         }
         return @events;
     }
@@ -3129,6 +3136,35 @@ multi MAIN('test') {
                 ),
             ],
             'can put tiny disk back after taking it';
+    }
+
+    {
+        my $game = game_after_hanoi_is_solved();
+
+        $game.take('tiny disk');
+        $game.move('right', 'middle');
+        $game.move('middle', 'right');
+        is $game.put_thing_on('tiny disk', 'right rod'),
+            [
+                Adventure::PlayerPutOn.new(
+                    :thing('tiny disk'),
+                    :on('right rod'),
+                ),
+                Hanoi::DiskAdded.new(
+                    :disk('tiny disk'),
+                    :target('right'),
+                ),
+                Hanoi::AchievementUnlocked.new(
+                ),
+                Adventure::GameRemarked.new(
+                    :remark<floor-reveals-hole>,
+                ),
+                Adventure::TwoRoomsConnected.new(
+                    :rooms<hall cave>,
+                    :direction<down>,
+                ),
+            ],
+            'can unlock the game by putting the tiny rod back';
     }
 
     done;
