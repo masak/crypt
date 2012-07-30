@@ -1158,6 +1158,9 @@ class Adventure::Engine {
         when Adventure::PlayerPutIn {
             %!thing_rooms{.thing} = "contents:{.in}";
         }
+        when Adventure::PlayerPutOn {
+            %!thing_rooms{.thing} = "contents:{.on}";
+        }
         when Adventure::GameFinished {
             $!game_finished = True;
         }
@@ -3165,6 +3168,25 @@ multi MAIN('test') {
                 ),
             ],
             'can unlock the game by putting the tiny rod back';
+    }
+
+    {
+        my $game = game_from_hall();
+
+        $game.use('flashlight');
+        $game.take('tiny disk');
+        $game.put_thing_on('tiny disk', 'right rod');
+        is $game.take('tiny disk'),
+            [
+                Hanoi::DiskRemoved.new(
+                    :disk<tiny disk>,
+                    :source<right>,
+                ),
+                Adventure::PlayerTook.new(
+                    :thing('tiny disk'),
+                ),
+            ],
+            'can take the tiny disk, put it back, and take it again';
     }
 
     done;
