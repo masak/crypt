@@ -1278,10 +1278,20 @@ class Crypt::Game {
                 };
 
             # Things in hall
-            .make_thing_carryable: 'tiny disk';
             .place_thing: 'helmet', 'hall';
             .make_thing_carryable: 'helmet';
             .make_thing_a_container: 'helmet';
+            .place_thing: 'hanoi', 'hall';
+            .make_thing_implicit: 'hanoi';
+            .make_thing_a_container: 'hanoi';
+            for <left middle right> X~ ' rod' -> $rod {
+                .place_thing: $rod, 'contents:hanoi';
+                .make_thing_a_platform: $rod;
+            }
+            for <tiny small medium large huge> X~ ' disk' -> $disk {
+                .place_thing: $disk, 'contents:left rod';
+            }
+            .make_thing_carryable: 'tiny disk';
 
             # Things in cave
             .place_thing: 'fire', 'cave';
@@ -1359,13 +1369,11 @@ class Crypt::Game {
     }
 
     method take($thing) {
-        my @events;
-        if $thing eq 'tiny disk' {
-            @events.push:
-                $!hanoi.remove('tiny disk'),
-                $!engine.place_thing('tiny disk', 'hall');
+        my @events = $!engine.take($thing);
+        if $thing eq 'tiny disk' && $!player_location eq 'hall' {
+            @events.unshift: $!hanoi.remove: $thing;
         }
-        return @events, $!engine.take($thing);
+        return @events;
     }
 
     method drop($thing) {
@@ -1377,7 +1385,11 @@ class Crypt::Game {
     }
 
     method put_thing_on($thing, $on) {
-        return $!engine.put_thing_on($thing, $on);
+        my @events = $!engine.put_thing_on($thing, $on);
+        if $thing eq 'tiny disk' && $on ~~ /^ (\w+) ' rod' $/ {
+            @events.push: $!hanoi.add: $thing, ~$0;
+        }
+        return @events;
     }
 
     method read($thing) {
@@ -3025,10 +3037,6 @@ multi MAIN('test') {
                     :disk('tiny disk'),
                     :source<left>,
                 ),
-                Adventure::ThingPlaced.new(
-                    :thing('tiny disk'),
-                    :room<hall>,
-                ),
                 Adventure::PlayerTook.new(
                     :thing('tiny disk'),
                 ),
@@ -3088,6 +3096,25 @@ multi MAIN('test') {
                 ),
             ],
             'walking (+) abbreviated directions';
+    }
+
+    {
+        my $game = game_from_hall();
+
+        $game.use('flashlight');
+        $game.take('tiny disk');
+        is $game.put_thing_on('tiny disk', 'middle rod'),
+            [
+                Adventure::PlayerPutOn.new(
+                    :thing('tiny disk'),
+                    :on('middle rod'),
+                ),
+                Hanoi::DiskAdded.new(
+                    :disk('tiny disk'),
+                    :target<middle>,
+                ),
+            ],
+            'can put tiny disk back after taking it';
     }
 
     done;
