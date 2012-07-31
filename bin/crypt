@@ -1290,11 +1290,26 @@ class Crypt::Game {
             for <left middle right> X~ ' rod' -> $rod {
                 .place_thing: $rod, 'contents:hanoi';
                 .make_thing_a_platform: $rod;
+                .on_put: $rod,
+                    -> $_ {
+                        when 'tiny disk' {
+                            my @events = $!hanoi.add: $_, $rod.words[0];
+                            for @events {
+                                when Hanoi::AchievementUnlocked {
+                                    push @events,
+                                        $!engine.remark('floor-reveals-hole'),
+                                        $!engine.connect(<hall cave>, 'down');
+                                }
+                            }
+                            @events;
+                        }
+                    };
             }
             for <tiny small medium large huge> X~ ' disk' -> $disk {
                 .place_thing: $disk, 'contents:left rod';
             }
             .make_thing_carryable: 'tiny disk';
+            .on_take: 'tiny disk', { $!hanoi.remove: 'tiny disk' };
 
             # Things in cave
             .place_thing: 'fire', 'cave';
@@ -1373,11 +1388,7 @@ class Crypt::Game {
     }
 
     method take($thing) {
-        my @events = $!engine.take($thing);
-        if $thing eq 'tiny disk' && $!player_location eq 'hall' {
-            @events.unshift: $!hanoi.remove: $thing;
-        }
-        return @events;
+        return $!engine.take($thing);
     }
 
     method drop($thing) {
@@ -1389,18 +1400,7 @@ class Crypt::Game {
     }
 
     method put_thing_on($thing, $on) {
-        my @events = $!engine.put_thing_on($thing, $on);
-        if $thing eq 'tiny disk' && $on ~~ /^ (\w+) ' rod' $/ {
-            @events.push: $!hanoi.add: $thing, ~$0;
-            for @events {
-                when Hanoi::AchievementUnlocked {
-                    push @events,
-                        $!engine.remark('floor-reveals-hole'),
-                        $!engine.connect(<hall cave>, 'down');
-                }
-            }
-        }
-        return @events;
+        return $!engine.put_thing_on($thing, $on);
     }
 
     method read($thing) {
@@ -3061,12 +3061,12 @@ multi MAIN('test') {
         $game.use('flashlight');
         is $game.take('tiny disk'),
             [
+                Adventure::PlayerTook.new(
+                    :thing('tiny disk'),
+                ),
                 Hanoi::DiskRemoved.new(
                     :disk('tiny disk'),
                     :source<left>,
-                ),
-                Adventure::PlayerTook.new(
-                    :thing('tiny disk'),
                 ),
             ],
             'can take the tiny disk from the hanoi game';
@@ -3182,12 +3182,12 @@ multi MAIN('test') {
         $game.put_thing_on('tiny disk', 'right rod');
         is $game.take('tiny disk'),
             [
+                Adventure::PlayerTook.new(
+                    :thing('tiny disk'),
+                ),
                 Hanoi::DiskRemoved.new(
                     :disk<tiny disk>,
                     :source<right>,
-                ),
-                Adventure::PlayerTook.new(
-                    :thing('tiny disk'),
                 ),
             ],
             'can take the tiny disk, put it back, and take it again';
