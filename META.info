@@ -1,0 +1,8 @@
+{
+    "name" : "Crypt::Game",
+    "version" : "0.2.0",
+    "description" : "An adventure game.",
+    "author" : "Carl Mäsak",
+    "depends" : ["Adventure::Engine"],
+    "source-url" : "git://github.com/masak/crypt.git"
+}
