@@ -88,12 +88,12 @@ open bag                     | close bag
 inventory";
             }
 
-            when 'save' {
+            when /^ save>> / {
                 $save = $game.save;
                 say "Game saved.";
             }
 
-            when 'restore' {
+            when /^ restore>> / {
                 when !defined $save {
                     say "No game has been saved yet.";
                 }
