@@ -1,65 +1,5 @@
 use Event;
 
-module Hanoi {
-    class DiskMoved does Event {
-        has $.disk;
-        has $.source;
-        has $.target;
-    }
-
-    class AchievementUnlocked does Event {
-    }
-
-    class AchievementLocked does Event {
-    }
-
-    class DiskRemoved does Event {
-        has $.disk;
-        has $.source;
-    }
-
-    class DiskAdded does Event {
-        has $.disk;
-        has $.target;
-    }
-
-    our sub print_hanoi_game(@all_events) {
-        my @disks = <tiny small medium large huge> X~ ' disk';
-        my @rods = <left middle right>;
-
-        my %s =
-            left   => [reverse @disks],
-            middle => [],
-            right  => [],
-        ;
-        for @all_events {
-            when Hanoi::DiskMoved   { %s{.target}.push: %s{.source}.pop }
-            when Hanoi::DiskRemoved { %s{.source}.pop }
-            when Hanoi::DiskAdded   { %s{.target}.push: .disk }
-        }
-
-        say "";
-        for reverse ^6 -> $line {
-            my %disks =
-                'none'        => '     |     ',
-                'tiny disk'   => '     =     ',
-                'small disk'  => '    ===    ',
-                'medium disk' => '   =====   ',
-                'large disk'  => '  =======  ',
-                'huge disk'   => ' ========= ',
-            ;
-
-            sub disk($rod) {
-                my $disk = %s{$rod}[$line] // 'none';
-                %disks{ $disk };
-            }
-
-            say join '  ', map &disk, @rods;
-        }
-        say join '--', '-----------' xx @rods;
-    }
-}
-
 class X::Hanoi is Exception {
     class LargerOnSmaller is X::Hanoi {
         has $.larger;
@@ -137,7 +77,7 @@ class X::Hanoi is Exception {
     }
 }
 
-class Hanoi::Game {
+class Game::Hanoi {
     my @disks = <tiny small medium large huge> X~ ' disk';
     my %size_of = @disks Z 1..5;
 
@@ -148,6 +88,62 @@ class Hanoi::Game {
     ;
 
     has $!achievement = 'locked';
+
+    class DiskMoved does Event {
+        has $.disk;
+        has $.source;
+        has $.target;
+    }
+
+    class AchievementUnlocked does Event {
+    }
+
+    class AchievementLocked does Event {
+    }
+
+    class DiskRemoved does Event {
+        has $.disk;
+        has $.source;
+    }
+
+    class DiskAdded does Event {
+        has $.disk;
+        has $.target;
+    }
+
+    our sub print_hanoi_game(@all_events) {
+        my %s =
+            left   => [reverse @disks],
+            middle => [],
+            right  => [],
+        ;
+        for @all_events {
+            when DiskMoved   { %s{.target}.push: %s{.source}.pop }
+            when DiskRemoved { %s{.source}.pop }
+            when DiskAdded   { %s{.target}.push: .disk }
+        }
+
+        my @rods = <left middle right>;
+        say "";
+        for reverse ^6 -> $line {
+            my %disks =
+                'none'        => '     |     ',
+                'tiny disk'   => '     =     ',
+                'small disk'  => '    ===    ',
+                'medium disk' => '   =====   ',
+                'large disk'  => '  =======  ',
+                'huge disk'   => ' ========= ',
+            ;
+
+            sub disk($rod) {
+                my $disk = %s{$rod}[$line] // 'none';
+                %disks{ $disk };
+            }
+
+            say join '  ', map &disk, @rods;
+        }
+        say join '--', '-----------' xx @rods;
+    }
 
     method move($source is copy, $target) {
         if $source eq any @disks {
@@ -172,14 +168,14 @@ class Hanoi::Game {
             }
         }
         my @events
-            = Hanoi::DiskMoved.new(:disk($moved_disk), :$source, :$target);
+            = DiskMoved.new(:disk($moved_disk), :$source, :$target);
         if %!state<right> == @disks-1
            && $target eq 'right'
            && $!achievement eq 'locked' {
-            @events.push(Hanoi::AchievementUnlocked.new);
+            @events.push(AchievementUnlocked.new);
         }
         if $moved_disk eq 'small disk' && $!achievement eq 'unlocked' {
-            @events.push(Hanoi::AchievementLocked.new);
+            @events.push(AchievementLocked.new);
         }
         self!apply_and_return: @events;
     }
@@ -190,7 +186,7 @@ class Hanoi::Game {
         my $source = self!rod_with_disk($disk, 'remove');
         die X::Hanoi::ForbiddenDiskRemoval.new(:$disk)
             unless $disk eq 'tiny disk';
-        my @events = Hanoi::DiskRemoved.new(:$disk, :$source);
+        my @events = DiskRemoved.new(:$disk, :$source);
         self!apply_and_return: @events;
     }
 
@@ -201,11 +197,11 @@ class Hanoi::Game {
             unless %!state.exists($target);
         die X::Hanoi::DiskAlreadyOnARod.new(:$disk)
             if grep { $disk eq any(@$_) }, %!state.values;
-        my @events = Hanoi::DiskAdded.new(:$disk, :$target);
+        my @events = DiskAdded.new(:$disk, :$target);
         if %!state<right> == @disks-1
            && $target eq 'right'
            && $!achievement eq 'locked' {
-            @events.push(Hanoi::AchievementUnlocked.new);
+            @events.push(AchievementUnlocked.new);
         }
         self!apply_and_return: @events;
     }
@@ -233,95 +229,95 @@ class Hanoi::Game {
 
     # RAKUDO: private multimethods NYI
     method !apply(Event $_) {
-        when Hanoi::DiskMoved {
+        when DiskMoved {
             my @source_rod := %!state{.source};
             my @target_rod := %!state{.target};
             @target_rod.push( @source_rod.pop );
         }
-        when Hanoi::AchievementUnlocked {
+        when AchievementUnlocked {
             $!achievement = 'unlocked';
         }
-        when Hanoi::AchievementLocked {
+        when AchievementLocked {
             $!achievement = 'locked';
         }
-        when Hanoi::DiskRemoved {
+        when DiskRemoved {
             my @source_rod := %!state{.source};
             @source_rod.pop;
         }
-        when Hanoi::DiskAdded {
+        when DiskAdded {
             my @target_rod := %!state{.target};
             @target_rod.push(.disk);
         }
     }
-}
 
-sub CLI {
-    my Hanoi::Game $game .= new;
+    our sub CLI {
+        my Game::Hanoi $game .= new;
 
-    sub params($method) {
-        $method.signature.params
-            ==> grep { .positional && !.invocant }
-            ==> map { .name.substr(1) }
-    }
-    my %commands = map { $^m.name => params($m) }, $game.^methods;
-    my @all_events;
-
-    Hanoi::print_hanoi_game(@all_events);
-    say "";
-    loop {
-        my $command = prompt('> ');
-        unless defined $command {
-            say "";
-            last;
+        sub params($method) {
+            $method.signature.params
+                ==> grep { .positional && !.invocant }
+                ==> map { .name.substr(1) }
         }
-        given lc $command {
-            when 'q' | 'quit' { last }
-            when 'h' | 'help' {
-                say "Goal: get all the disks to the right rod.";
-                say "You can never place a larger disk on a smaller one.";
-                say "Available commands:";
-                for %commands.sort {
-                    say "  {.key} {map { "<$_>" }, .value.list}";
-                }
-                say "  q[uit]";
-                say "  h[elp]";
-                say "  s[how]";
-                say "";
-                my @disks = <tiny small medium large huge> X~ ' disk';
-                my @rods = <left middle right>;
-                say "Disks: ", join ', ', @disks;
-                say "Rods: ", join ', ', @rods;
-            }
-            when 's' | 'show' { Hanoi::print_hanoi_game(@all_events) }
+        my %commands = map { $^m.name => params($m) }, $game.^methods;
+        my @all_events;
 
-            sub munge   { $^s.subst(/' disk'»/, '_disk', :g) }
-            sub unmunge { $^s.subst(/'_disk'»/, ' disk', :g) }
-            my $verb = .&munge.words[0].&unmunge;
-            my @args = .&munge.words[1..*]».&unmunge;
-            when %commands.exists($verb) {
-                my @req_args = %commands{$verb}.list;
-                when @args != @req_args {
-                    say "You passed in {+@args} arguments, but $verb requires {+@req_args}.";
-                    say "The arguments are {map { "<$_>" }, @req_args}.";
-                    say "'help' for more help.";
-                }
-                my @events = $game."$verb"(|@args);
-                push @all_events, @events;
-                Hanoi::print_hanoi_game(@all_events);
-                for @events {
-                    when Hanoi::AchievementUnlocked { say "Achievement unlocked!" }
-                    when Hanoi::AchievementLocked { say "Achievement locked!" }
-                }
-                CATCH {
-                    when X::Hanoi { say .message, '.' }
-                }
-            }
-
-            default {
-                say "Sorry, the game doesn't recognize that command. :/";
-                say "'help' if you're confused as well.";
-            }
-        }
+        print_hanoi_game(@all_events);
         say "";
+        loop {
+            my $command = prompt('> ');
+            unless defined $command {
+                say "";
+                last;
+            }
+            given lc $command {
+                when 'q' | 'quit' { last }
+                when 'h' | 'help' {
+                    say "Goal: get all the disks to the right rod.";
+                    say "You can never place a larger disk on a smaller one.";
+                    say "Available commands:";
+                    for %commands.sort {
+                        say "  {.key} {map { "<$_>" }, .value.list}";
+                    }
+                    say "  q[uit]";
+                    say "  h[elp]";
+                    say "  s[how]";
+                    say "";
+                    my @disks = <tiny small medium large huge> X~ ' disk';
+                    my @rods = <left middle right>;
+                    say "Disks: ", join ', ', @disks;
+                    say "Rods: ", join ', ', @rods;
+                }
+                when 's' | 'show' { print_hanoi_game(@all_events) }
+
+                sub munge   { $^s.subst(/' disk'»/, '_disk', :g) }
+                sub unmunge { $^s.subst(/'_disk'»/, ' disk', :g) }
+                my $verb = .&munge.words[0].&unmunge;
+                my @args = .&munge.words[1..*]».&unmunge;
+                when %commands.exists($verb) {
+                    my @req_args = %commands{$verb}.list;
+                    when @args != @req_args {
+                        say "You passed in {+@args} arguments, but $verb requires {+@req_args}.";
+                        say "The arguments are {map { "<$_>" }, @req_args}.";
+                        say "'help' for more help.";
+                    }
+                    my @events = $game."$verb"(|@args);
+                    push @all_events, @events;
+                    print_hanoi_game(@all_events);
+                    for @events {
+                        when AchievementUnlocked { say "Achievement unlocked!" }
+                        when AchievementLocked { say "Achievement locked!" }
+                    }
+                    CATCH {
+                        when X::Hanoi { say .message, '.' }
+                    }
+                }
+
+                default {
+                    say "Sorry, the game doesn't recognize that command. :/";
+                    say "'help' if you're confused as well.";
+                }
+            }
+            say "";
+        }
     }
 }

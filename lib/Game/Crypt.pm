@@ -1,5 +1,5 @@
 use Adventure::Engine;
-use Hanoi::Game;
+use Game::Hanoi;
 
 class X::Crypt is Exception {
 }
@@ -7,7 +7,7 @@ class X::Crypt is Exception {
 class X::Crypt::NoDisksHere is X::Crypt {
 }
 
-class Crypt::Game {
+class Game::Crypt {
     has $!engine;
     has $!hanoi;
     has $!player_location;
@@ -129,7 +129,7 @@ class Crypt::Game {
                         when 'tiny disk' {
                             my @events = $!hanoi.add: $_, $rod.words[0];
                             for @events {
-                                when Hanoi::AchievementUnlocked {
+                                when Game::Hanoi::AchievementUnlocked {
                                     push @events,
                                         $!engine.remark('floor-reveals-hole'),
                                         $!engine.connect(<hall cave>, 'down');
@@ -189,7 +189,7 @@ class Crypt::Game {
             .place_player: $!player_location = 'clearing';
         }
 
-        $!hanoi = Hanoi::Game.new();
+        $!hanoi = Game::Hanoi.new();
     }
 
     method look {
@@ -251,12 +251,12 @@ class Crypt::Game {
 
         my @events = $!hanoi.move($source, $target);
         for @events {
-            when Hanoi::AchievementUnlocked {
+            when Game::Hanoi::AchievementUnlocked {
                 push @events,
                     $!engine.remark('floor-reveals-hole'),
                     $!engine.connect(<hall cave>, 'down');
             }
-            when Hanoi::AchievementLocked {
+            when Game::Hanoi::AchievementLocked {
                 push @events,
                     $!engine.remark('floor-hides-hole'),
                     $!engine.disconnect(<hall cave>, 'down');

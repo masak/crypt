@@ -1,6 +1,6 @@
 use v6;
 use Test;
-use Hanoi::Game;
+use Game::Hanoi;
 
 sub throws_exception(&code, $ex_type, $message, &followup = {;}) {
     &code();
@@ -26,10 +26,10 @@ sub throws_exception(&code, $ex_type, $message, &followup = {;}) {
 }
 
 {
-    my $game = Hanoi::Game.new();
+    my $game = Game::Hanoi.new();
 
     is $game.move('left', 'middle'),
-       Hanoi::DiskMoved.new(
+       Game::Hanoi::DiskMoved.new(
             :disk('tiny disk'),
             :source<left>,
             :target<middle>
@@ -85,7 +85,7 @@ sub throws_exception(&code, $ex_type, $message, &followup = {;}) {
 }
 
 {
-    my $game = Hanoi::Game.new();
+    my $game = Game::Hanoi.new();
 
     multi hanoi_moves($source, $, $target, 1) {
         # A single disk, easy; just move it directly.
@@ -109,7 +109,7 @@ sub throws_exception(&code, $ex_type, $message, &followup = {;}) {
         for @moves -> $source, $, $target {
             my ($event, @rest) = $game.move($source, $target);
             die "Unexpected event type: {$event.name}"
-                unless $event ~~ Hanoi::DiskMoved;
+                unless $event ~~ Game::Hanoi::DiskMoved;
             die "Unexpected extra events: @rest"
                 if @rest;
         }
@@ -118,21 +118,21 @@ sub throws_exception(&code, $ex_type, $message, &followup = {;}) {
     {
         my ($source, $, $target) = @last_move;
         is $game.move($source, $target), (
-            Hanoi::DiskMoved.new(:disk('tiny disk'), :$source, :$target),
-            Hanoi::AchievementUnlocked.new(),
+            Game::Hanoi::DiskMoved.new(:disk('tiny disk'), :$source, :$target),
+            Game::Hanoi::AchievementUnlocked.new(),
         ), 'putting all disks on the right rod unlocks achievement';
 
         $game.move($target, $source);
         is $game.move($source, $target), (
-            Hanoi::DiskMoved.new(:disk('tiny disk'), :$source, :$target),
+            Game::Hanoi::DiskMoved.new(:disk('tiny disk'), :$source, :$target),
         ), 'moving things back and forth does not unlock achievement again';
     }
 
     {
         $game.move('right', 'middle');
         is $game.move(my $source = 'right', my $target = 'left'), (
-            Hanoi::DiskMoved.new(:disk('small disk'), :$source, :$target),
-            Hanoi::AchievementLocked.new(),
+            Game::Hanoi::DiskMoved.new(:disk('small disk'), :$source, :$target),
+            Game::Hanoi::AchievementLocked.new(),
         ), 'removing two disks from the right rod locks achievement';
     }
 
@@ -140,22 +140,22 @@ sub throws_exception(&code, $ex_type, $message, &followup = {;}) {
         $game.move('left', 'right');
         $game.remove('tiny disk');
         is $game.add(my $disk = 'tiny disk', my $target = 'right'), (
-            Hanoi::DiskAdded.new(:$disk, :$target),
-            Hanoi::AchievementUnlocked.new(),
+            Game::Hanoi::DiskAdded.new(:$disk, :$target),
+            Game::Hanoi::AchievementUnlocked.new(),
         ), 'you can also unlock achievement by adding the disk';
     }
 }
 
 {
-    my $game = Hanoi::Game.new();
+    my $game = Game::Hanoi.new();
 
     is $game.move('tiny disk', my $target = 'middle'),
-       Hanoi::DiskMoved.new(:disk('tiny disk'), :source<left>, :$target),
+       Game::Hanoi::DiskMoved.new(:disk('tiny disk'), :source<left>, :$target),
        'naming source disk instead of the rod (+)';
 }
 
 {
-    my $game = Hanoi::Game.new();
+    my $game = Game::Hanoi.new();
 
     throws_exception
         { $game.move('large disk', 'right') },
@@ -173,7 +173,7 @@ sub throws_exception(&code, $ex_type, $message, &followup = {;}) {
 }
 
 {
-    my $game = Hanoi::Game.new();
+    my $game = Game::Hanoi.new();
 
     throws_exception
         { $game.move('small disk', 'right') },
@@ -187,10 +187,10 @@ sub throws_exception(&code, $ex_type, $message, &followup = {;}) {
 }
 
 {
-    my $game = Hanoi::Game.new();
+    my $game = Game::Hanoi.new();
 
     is $game.remove('tiny disk'),
-       Hanoi::DiskRemoved.new(:disk('tiny disk'), :source<left>),
+       Game::Hanoi::DiskRemoved.new(:disk('tiny disk'), :source<left>),
        'removing a disk (+)';
 
     throws_exception
@@ -224,7 +224,7 @@ sub throws_exception(&code, $ex_type, $message, &followup = {;}) {
 }
 
 {
-    my $game = Hanoi::Game.new();
+    my $game = Game::Hanoi.new();
 
     $game.remove('tiny disk');
 
@@ -262,7 +262,7 @@ sub throws_exception(&code, $ex_type, $message, &followup = {;}) {
         };
 
     is $game.add('tiny disk', 'left'),
-       Hanoi::DiskAdded.new(:disk('tiny disk'), :target<left>),
+       Game::Hanoi::DiskAdded.new(:disk('tiny disk'), :target<left>),
        'adding a disk (+)';
 
     throws_exception
@@ -290,7 +290,7 @@ sub throws_exception(&code, $ex_type, $message, &followup = {;}) {
 }
 
 {
-    my $game = Hanoi::Game.new();
+    my $game = Game::Hanoi.new();
 
     throws_exception
         { $game.remove('masakian disk') },

@@ -1,6 +1,6 @@
 use v6;
 use Test;
-use Crypt::Game;
+use Game::Crypt;
 
 sub throws_exception(&code, $ex_type, $message, &followup = {;}) {
     &code();
@@ -26,7 +26,7 @@ sub throws_exception(&code, $ex_type, $message, &followup = {;}) {
 }
 
 sub game_from_chamber {
-    my $game = Crypt::Game.new();
+    my $game = Game::Crypt.new();
 
     $game.open('car');
     $game.take('flashlight');
@@ -84,7 +84,7 @@ sub game_from_crypt {
 }
 
 {
-    my $game = Crypt::Game.new();
+    my $game = Game::Crypt.new();
 
     is $game.look(),
         Adventure::PlayerLooked.new(
@@ -96,7 +96,7 @@ sub game_from_crypt {
 }
 
 {
-    my $game = Crypt::Game.new();
+    my $game = Game::Crypt.new();
 
     is $game.walk('east'),
         [
@@ -113,7 +113,7 @@ sub game_from_crypt {
 }
 
 {
-    my $game = Crypt::Game.new();
+    my $game = Game::Crypt.new();
 
     throws_exception
         { $game.walk('south') },
@@ -128,7 +128,7 @@ sub game_from_crypt {
 }
 
 {
-    my $game = Crypt::Game.new();
+    my $game = Game::Crypt.new();
 
     $game.walk('east');
     throws_exception
@@ -138,7 +138,7 @@ sub game_from_crypt {
 }
 
 {
-    my $game = Crypt::Game.new();
+    my $game = Game::Crypt.new();
 
     is $game.open('car'),
         [
@@ -154,7 +154,7 @@ sub game_from_crypt {
 }
 
 {
-    my $game = Crypt::Game.new();
+    my $game = Game::Crypt.new();
 
     $game.open('car');
     is $game.look(),
@@ -167,7 +167,7 @@ sub game_from_crypt {
 }
 
 {
-    my $game = Crypt::Game.new();
+    my $game = Game::Crypt.new();
 
     $game.open('car');
     is $game.take('flashlight'),
@@ -178,7 +178,7 @@ sub game_from_crypt {
 }
 
 {
-    my $game = Crypt::Game.new();
+    my $game = Game::Crypt.new();
 
     $game.open('car');
     is $game.take('rope'),
@@ -189,7 +189,7 @@ sub game_from_crypt {
 }
 
 {
-    my $game = Crypt::Game.new();
+    my $game = Game::Crypt.new();
 
     throws_exception
         { $game.take('flashlight') },
@@ -198,7 +198,7 @@ sub game_from_crypt {
 }
 
 {
-    my $game = Crypt::Game.new();
+    my $game = Game::Crypt.new();
 
     $game.open('car');
     is $game.examine('flashlight'),
@@ -209,7 +209,7 @@ sub game_from_crypt {
 }
 
 {
-    my $game = Crypt::Game.new();
+    my $game = Game::Crypt.new();
 
     $game.walk('east');
     $game.examine('grass');
@@ -221,7 +221,7 @@ sub game_from_crypt {
 }
 
 {
-    my $game = Crypt::Game.new();
+    my $game = Game::Crypt.new();
 
     $game.walk('east');
     throws_exception
@@ -231,7 +231,7 @@ sub game_from_crypt {
 }
 
 {
-    my $game = Crypt::Game.new();
+    my $game = Game::Crypt.new();
 
     $game.walk('east');
     $game.examine('bushes');
@@ -243,7 +243,7 @@ sub game_from_crypt {
 }
 
 {
-    my $game = Crypt::Game.new();
+    my $game = Game::Crypt.new();
 
     $game.walk('east');
     $game.examine('bushes');
@@ -263,7 +263,7 @@ sub game_from_crypt {
 }
 
 {
-    my $game = Crypt::Game.new();
+    my $game = Game::Crypt.new();
 
     $game.walk('east');
     is $game.take('leaves'),
@@ -274,7 +274,7 @@ sub game_from_crypt {
 }
 
 {
-    my $game = Crypt::Game.new();
+    my $game = Game::Crypt.new();
 
     $game.walk('east');
     $game.take('leaves');
@@ -361,7 +361,7 @@ sub game_from_crypt {
 
     $game.use('flashlight');
     is $game.move('left', 'middle'),
-        Hanoi::DiskMoved.new(
+        Game::Hanoi::DiskMoved.new(
             :disk('tiny disk'),
             :source<left>,
             :target<middle>,
@@ -457,7 +457,7 @@ sub game_from_crypt {
 }
 
 {
-    my $game = Crypt::Game.new();
+    my $game = Game::Crypt.new();
 
     $game.walk('east');
     is $game.take('water'),
@@ -596,7 +596,7 @@ sub game_from_crypt {
             Adventure::PlayerTook.new(
                 :thing('tiny disk'),
             ),
-            Hanoi::DiskRemoved.new(
+            Game::Hanoi::DiskRemoved.new(
                 :disk('tiny disk'),
                 :source<left>,
             ),
@@ -628,7 +628,7 @@ sub game_from_crypt {
 }
 
 {
-    my $game = Crypt::Game.new();
+    my $game = Game::Crypt.new();
 
     is $game.walk('e'),
         [
@@ -655,7 +655,7 @@ sub game_from_crypt {
                 :thing('tiny disk'),
                 :on('middle rod'),
             ),
-            Hanoi::DiskAdded.new(
+            Game::Hanoi::DiskAdded.new(
                 :disk('tiny disk'),
                 :target<middle>,
             ),
@@ -675,11 +675,11 @@ sub game_from_crypt {
                 :thing('tiny disk'),
                 :on('right rod'),
             ),
-            Hanoi::DiskAdded.new(
+            Game::Hanoi::DiskAdded.new(
                 :disk('tiny disk'),
                 :target('right'),
             ),
-            Hanoi::AchievementUnlocked.new(
+            Game::Hanoi::AchievementUnlocked.new(
             ),
             Adventure::GameRemarked.new(
                 :remark<floor-reveals-hole>,
@@ -703,7 +703,7 @@ sub game_from_crypt {
             Adventure::PlayerTook.new(
                 :thing('tiny disk'),
             ),
-            Hanoi::DiskRemoved.new(
+            Game::Hanoi::DiskRemoved.new(
                 :disk<tiny disk>,
                 :source<right>,
             ),

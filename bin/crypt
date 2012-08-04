@@ -1,7 +1,7 @@
 #! /usr/local/bin/nom
 
 use Test;
-use Crypt::Game;
+use Game::Crypt;
 
 sub MAIN {
     say "CRYPT";
@@ -13,7 +13,7 @@ sub MAIN {
     say "to find out...";
     say "";
 
-    my $game = Crypt::Game.new();
+    my $game = Game::Crypt.new();
     my $save;
     my %descriptions;
     for slurp("game-data/descriptions").trim.split(/\n\n/) {
@@ -106,7 +106,7 @@ inventory";
                         say "";
                         say %descriptions{.room};
                         if .room eq 'hall' {
-                            Hanoi::print_hanoi_game(@all_events);
+                            Game::Hanoi::print_hanoi_game(@all_events);
                             say "";
                         }
                         for .things -> $thing {
@@ -219,7 +219,7 @@ inventory";
                         say "";
                         say %descriptions{.room};
                         if .room eq 'hall' {
-                            Hanoi::print_hanoi_game(@all_events);
+                            Game::Hanoi::print_hanoi_game(@all_events);
                             say "";
                         }
                         for .things -> $thing {
@@ -273,7 +273,7 @@ inventory";
                         say "You put the {.thing} on the {.on}.";
                         if .thing eq 'tiny disk' && .on ~~ /' rod'/ {
                             $player_has_tiny_disk = False;
-                            Hanoi::print_hanoi_game(@all_events);
+                            Game::Hanoi::print_hanoi_game(@all_events);
                             say "";
                         }
                     }
@@ -283,9 +283,9 @@ inventory";
                     when Adventure::PlayerRead {
                         say %descriptions{"{.thing}"};
                     }
-                    when Hanoi::DiskMoved {
+                    when Game::Hanoi::DiskMoved {
                         say "You put the {.disk} on the {.target} rod.";
-                        Hanoi::print_hanoi_game(@all_events);
+                        Game::Hanoi::print_hanoi_game(@all_events);
                     }
                     when Adventure::PlayerCheckedInventory {
                         if .things {
