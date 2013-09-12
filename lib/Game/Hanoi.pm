@@ -254,9 +254,7 @@ class Game::Hanoi {
         my Game::Hanoi $game .= new;
 
         sub params($method) {
-            $method.signature.params
-                ==> grep { .positional && !.invocant }
-                ==> map { .name.substr(1) }
+            $method.signature.params ==> grep { .positional && !.invocant } ==> map { .name.substr(1) }
         }
         my %commands = map { $^m.name => params($m) }, $game.^methods;
         my @all_events;
