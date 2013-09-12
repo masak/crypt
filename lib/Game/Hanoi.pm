@@ -1,79 +1,80 @@
 use Event;
 
 class X::Hanoi is Exception {
-    class LargerOnSmaller is X::Hanoi {
-        has $.larger;
-        has $.smaller;
+}
 
-        method message {
-            "Cannot put the $.larger on the $.smaller"
-        }
+class X::Hanoi::LargerOnSmaller is X::Hanoi {
+    has $.larger;
+    has $.smaller;
+
+    method message {
+        "Cannot put the $.larger on the $.smaller"
     }
+}
 
-    class NoSuchRod is X::Hanoi {
-        has $.rod;
-        has $.name;
+class X::Hanoi::NoSuchRod is X::Hanoi {
+    has $.rod;
+    has $.name;
 
-        method message {
-            "No such $.rod rod '$.name'"
-        }
+    method message {
+        "No such $.rod rod '$.name'"
     }
+}
 
-    class RodHasNoDisks is X::Hanoi {
-        has $.name;
+class X::Hanoi::RodHasNoDisks is X::Hanoi {
+    has $.name;
 
-        method message {
-            "Cannot move from the $.name rod because there is no disk there"
-        }
+    method message {
+        "Cannot move from the $.name rod because there is no disk there"
     }
+}
 
-    class CoveredDisk is X::Hanoi {
-        has $.disk;
-        has @.covered_by;
+class X::Hanoi::CoveredDisk is X::Hanoi {
+    has $.disk;
+    has @.covered_by;
 
-        method message {
-            sub last_and(@things) {
-                map { "{'and ' if $_ == @things.end}@things[$_]" }, ^@things
-            }
-            my $disklist = @.covered_by > 1
-                ?? join ', ', last_and map { "the $_" }, @.covered_by
-                !! "the @.covered_by[0]";
-            "Cannot move the $.disk: it is covered by $disklist"
+    method message {
+        sub last_and(@things) {
+            map { "{'and ' if $_ == @things.end}@things[$_]" }, ^@things
         }
+        my $disklist = @.covered_by > 1
+            ?? join ', ', last_and map { "the $_" }, @.covered_by
+            !! "the @.covered_by[0]";
+        "Cannot move the $.disk: it is covered by $disklist"
     }
+}
 
-    class ForbiddenDiskRemoval is X::Hanoi {
-        has $.disk;
+class X::Hanoi::ForbiddenDiskRemoval is X::Hanoi {
+    has $.disk;
 
-        method message {
-            "Removing the $.disk is forbidden"
-        }
+    method message {
+        "Removing the $.disk is forbidden"
     }
+}
 
-    class DiskHasBeenRemoved is X::Hanoi {
-        has $.disk;
-        has $.action;
+class X::Hanoi::DiskHasBeenRemoved is X::Hanoi {
+    has $.disk;
+    has $.action;
 
-        method message {
-            "Cannot $.action the $.disk because it has been removed"
-        }
+    method message {
+        "Cannot $.action the $.disk because it has been removed"
     }
+}
 
-    class NoSuchDisk is X::Hanoi {
-        has $.disk;
-        has $.action;
+class X::Hanoi::NoSuchDisk is X::Hanoi {
+    has $.disk;
+    has $.action;
 
-        method message {
-            "Cannot $.action a $.disk because there is no such disk"
-        }
+    method message {
+        "Cannot $.action a $.disk because there is no such disk"
     }
+}
 
-    class DiskAlreadyOnARod is X::Hanoi {
-        has $.disk;
+class X::Hanoi::DiskAlreadyOnARod is X::Hanoi {
+    has $.disk;
 
-        method message {
-            "Cannot add the $.disk because it is already on a rod"
-        }
+    method message {
+        "Cannot add the $.disk because it is already on a rod"
     }
 }
 
