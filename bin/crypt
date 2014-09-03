@@ -54,7 +54,7 @@ sub MAIN {
     >;
 
     given 'clearing' {
-        say .ucfirst;
+        say .tc;
         say "";
         say %descriptions{$_};
         say "Your car is parked here.";
@@ -102,7 +102,7 @@ inventory";
                 my @events = $game.look;
                 for @events {
                     when Adventure::PlayerLooked {
-                        say ucfirst .room;
+                        say tc .room;
                         say "";
                         say %descriptions{.room};
                         if .room eq 'hall' {
@@ -214,7 +214,7 @@ inventory";
                 my @events = $game."$verb"(|@args);
                 push @all_events, @events;
                 for @events {
-                    when Adventure::PlayerWalked { say ucfirst .to; }
+                    when Adventure::PlayerWalked { say tc .to; }
                     when Adventure::PlayerLooked {
                         say "";
                         say %descriptions{.room};
