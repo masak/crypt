@@ -1,6 +1,6 @@
 {
     "name" : "Game::Crypt",
-    "version" : "0.2.1",
+    "version" : "0.2.2",
     "description" : "An adventure game.",
     "author" : "Carl Mäsak",
     "depends" : ["Adventure::Engine"],

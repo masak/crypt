@@ -151,9 +151,9 @@ class Game::Hanoi {
             $source = self!rod_with_disk($source, 'move');
         }
         die X::Hanoi::NoSuchRod.new(:rod<source>, :name($source))
-            unless %!state.exists($source);
+            unless %!state{$source}:exists;
         die X::Hanoi::NoSuchRod.new(:rod<target>, :name($target))
-            unless %!state.exists($target);
+            unless %!state{$target}:exists;
         my @source_rod := %!state{$source};
         die X::Hanoi::RodHasNoDisks.new(:name($source))
             unless @source_rod;
@@ -195,7 +195,7 @@ class Game::Hanoi {
         die X::Hanoi::NoSuchDisk.new(:action<add>, :$disk)
             unless $disk eq any(@disks);
         die X::Hanoi::NoSuchRod.new(:rod<target>, :name($target))
-            unless %!state.exists($target);
+            unless %!state{$target}:exists;
         die X::Hanoi::DiskAlreadyOnARod.new(:$disk)
             if grep { $disk eq any(@$_) }, %!state.values;
         my @events = DiskAdded.new(:$disk, :$target);
@@ -292,7 +292,7 @@ class Game::Hanoi {
                 sub unmunge { $^s.subst(/'_disk'»/, ' disk', :g) }
                 my $verb = .&munge.words[0].&unmunge;
                 my @args = .&munge.words[1..*]».&unmunge;
-                when %commands.exists($verb) {
+                when %commands{$verb}:exists {
                     my @req_args = %commands{$verb}.list;
                     when @args != @req_args {
                         say "You passed in {+@args} arguments, but $verb requires {+@req_args}.";
