@@ -252,12 +252,12 @@ class Game::Crypt {
         my @events = $!hanoi.move($source, $target);
         for @events {
             when Game::Hanoi::AchievementUnlocked {
-                push @events,
+                @events.append:
                     $!engine.remark('floor-reveals-hole'),
                     $!engine.connect(<hall cave>, 'down');
             }
             when Game::Hanoi::AchievementLocked {
-                push @events,
+                @events.append:
                     $!engine.remark('floor-hides-hole'),
                     $!engine.disconnect(<hall cave>, 'down');
             }
