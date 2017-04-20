@@ -1,6 +1,7 @@
 use v6;
 use Test;
 use Game::Crypt;
+use Adventure::Engine;
 
 sub throws_exception(&code, $ex_type, $message, &followup = {;}) {
     &code();
@@ -712,4 +713,4 @@ sub game_from_crypt {
         'can take the tiny disk, put it back, and take it again';
 }
 
-done;
+done-testing;
