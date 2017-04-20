@@ -1,4 +1,4 @@
-use Event;
+use Adventure::Engine;
 
 class X::Hanoi is Exception {
 }
