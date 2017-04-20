@@ -92,12 +92,13 @@ sub throws_exception(&code, $ex_type, $message, &followup = {;}) {
         $source, 'to', $target
     }
     multi hanoi_moves($source, $helper, $target, $n) {
-        # $n-1 disks on to; move them off to the $helper rod first...
-        hanoi_moves($source, $target, $helper, $n-1),
-        # ...then move over the freed disk at the bottom...
-        hanoi_moves($source, $helper, $target, 1),
-        # ...and finally move the rest from $helper to $target.
-        hanoi_moves($helper, $source, $target, $n-1)
+        flat
+            # $n-1 disks on to; move them off to the $helper rod first...
+            hanoi_moves($source, $target, $helper, $n-1),
+            # ...then move over the freed disk at the bottom...
+            hanoi_moves($source, $helper, $target, 1),
+            # ...and finally move the rest from $helper to $target.
+            hanoi_moves($helper, $source, $target, $n-1)
     }
 
     # Let's play out the thing to the end. 32 moves.
