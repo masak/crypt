@@ -130,9 +130,9 @@ class Game::Crypt {
                             my @events = $!hanoi.add: $_, $rod.words[0];
                             for @events {
                                 when Game::Hanoi::AchievementUnlocked {
-                                    push @events,
-                                        $!engine.remark('floor-reveals-hole'),
-                                        $!engine.connect(<hall cave>, 'down');
+                                    @events.append:
+                                        flat $!engine.remark('floor-reveals-hole'),
+                                        flat $!engine.connect(<hall cave>, 'down');
                                 }
                             }
                             @events;
