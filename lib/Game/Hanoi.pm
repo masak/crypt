@@ -80,7 +80,7 @@ class X::Hanoi::DiskAlreadyOnARod is X::Hanoi {
 
 class Game::Hanoi {
     my @disks = <tiny small medium large huge> X~ ' disk';
-    my %size_of = @disks Z 1..5;
+    my %size_of = flat @disks Z 1..5;
 
     has %!state =
         left   => [reverse @disks],
