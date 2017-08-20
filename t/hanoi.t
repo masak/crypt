@@ -92,12 +92,13 @@ sub throws_exception(&code, $ex_type, $message, &followup = {;}) {
         $source, 'to', $target
     }
     multi hanoi_moves($source, $helper, $target, $n) {
-        # $n-1 disks on to; move them off to the $helper rod first...
-        hanoi_moves($source, $target, $helper, $n-1),
-        # ...then move over the freed disk at the bottom...
-        hanoi_moves($source, $helper, $target, 1),
-        # ...and finally move the rest from $helper to $target.
-        hanoi_moves($helper, $source, $target, $n-1)
+        flat
+            # $n-1 disks on to; move them off to the $helper rod first...
+            hanoi_moves($source, $target, $helper, $n-1),
+            # ...then move over the freed disk at the bottom...
+            hanoi_moves($source, $helper, $target, 1),
+            # ...and finally move the rest from $helper to $target.
+            hanoi_moves($helper, $source, $target, $n-1)
     }
 
     # Let's play out the thing to the end. 32 moves.
@@ -105,7 +106,7 @@ sub throws_exception(&code, $ex_type, $message, &followup = {;}) {
     # RAKUDO: .splice doesn't do WhateverCode yet: wanted *-3
     my @last_move = @moves.splice(@moves.end-2);
 
-    lives_ok {
+    lives-ok {
         for @moves -> $source, $, $target {
             my ($event, @rest) = $game.move($source, $target);
             die "Unexpected event type: {$event.name}"
@@ -215,6 +216,8 @@ sub throws_exception(&code, $ex_type, $message, &followup = {;}) {
         };
 
     $game.move('small disk', 'middle');
+
+    throws_exception
         { $game.remove('medium disk') },
         X::Hanoi::ForbiddenDiskRemoval,
         'removing a disk (-) uncovered, removal is still forbidden',
@@ -306,4 +309,4 @@ sub throws_exception(&code, $ex_type, $message, &followup = {;}) {
 
 }
 
-done;
+done-testing;

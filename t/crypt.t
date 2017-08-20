@@ -1,6 +1,7 @@
 use v6;
 use Test;
 use Game::Crypt;
+use Adventure::Engine;
 
 sub throws_exception(&code, $ex_type, $message, &followup = {;}) {
     &code();
@@ -49,11 +50,12 @@ sub game_from_hall {
 sub game_after_hanoi_is_solved {
     my $game = game_from_hall();
 
-    multi hanoi_moves($source, $, $target, 1) { { :$source, :$target } }
+    multi hanoi_moves($source, $, $target, 1) { { :$source, :$target }.item }
     multi hanoi_moves($source, $helper, $target, $n) {
-        hanoi_moves($source, $target, $helper, $n-1),
-        hanoi_moves($source, $helper, $target, 1),
-        hanoi_moves($helper, $source, $target, $n-1);
+        flat
+            hanoi_moves($source, $target, $helper, $n-1),
+            hanoi_moves($source, $helper, $target, 1),
+            hanoi_moves($helper, $source, $target, $n-1);
     }
 
     $game.use('flashlight');
@@ -711,4 +713,4 @@ sub game_from_crypt {
         'can take the tiny disk, put it back, and take it again';
 }
 
-done;
+done-testing;
